@@ -1,0 +1,48 @@
+{
+  "name": "MES material shortage holds new feed while existing product finishes",
+  "duration": 130,
+  "inputs": [
+    {
+      "at": 0,
+      "tag": "MesStop",
+      "value": false
+    },
+    {
+      "at": 20,
+      "tag": "MesMaterialPermit",
+      "value": false
+    },
+    {
+      "at": 110,
+      "tag": "MesMaterialPermit",
+      "value": true
+    }
+  ],
+  "checks": [
+    {
+      "at": 30,
+      "tag": "M0",
+      "equals": true
+    },
+    {
+      "at": 30,
+      "tag": "BodyFeedEnable",
+      "equals": false
+    },
+    {
+      "at": 100,
+      "tag": "ShippedCount",
+      "equals": 1
+    },
+    {
+      "at": 105,
+      "tag": "LaunchedCount",
+      "equals": 1
+    },
+    {
+      "at": 130,
+      "tag": "LaunchedCount",
+      "min": 2
+    }
+  ]
+}

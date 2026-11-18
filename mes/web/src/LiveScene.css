@@ -1,0 +1,12 @@
+.live-scene-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(240px,1fr);gap:18px;align-items:stretch;margin:15px 0}
+.live-scene-picture{position:relative;min-width:0;aspect-ratio:1.65;background:#d9e1de;border:1px solid #d5e4dd;border-radius:11px;overflow:hidden}
+.live-scene-picture>img,.live-scene-fallback>img{width:100%;height:100%;object-fit:cover;display:block}
+.live-scene-fallback{position:absolute;inset:0}.live-scene-fallback strong{position:absolute;left:12px;bottom:12px;background:#17343fdf;color:#fff;padding:8px 12px;border-radius:7px;font-size:12px}
+.live-scene-controls{display:flex;flex-direction:column;gap:12px;margin-top:18px;padding:18px;border:1px solid #dceae4;border-radius:11px;background:#f5faf7;color:#3d6560;font-size:12px}
+.live-scene-controls>strong{font-size:17px;color:#1c3e40;overflow-wrap:anywhere}
+.live-scene-buttons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:auto}
+.live-scene-buttons button,.live-scene-buttons a{border:1px solid #bcd8ca;border-radius:7px;background:#fff;color:#216e57;padding:10px;text-align:center;text-decoration:none;font:700 12px 'DM Sans','Noto Sans KR',sans-serif;cursor:pointer}
+.live-scene-buttons button:first-child{background:#2a876d;color:#fff}
+.live-scene-buttons button:disabled{opacity:.45;cursor:default}
+.live-scene-controls p{margin:0;color:#a04434}
+@media(max-width:850px){.live-scene-layout{grid-template-columns:1fr}}

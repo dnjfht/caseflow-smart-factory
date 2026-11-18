@@ -1,0 +1,11 @@
+# Local build and runtime state
+node_modules/
+dist/
+target/
+data/
+*.log
+*.db
+*.mv.db
+.env
+.env.*
+!*.env.example

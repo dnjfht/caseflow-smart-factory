@@ -1,0 +1,1211 @@
+{
+  "version": 4,
+  "parts": [
+    {
+      "id": "BodyConveyor",
+      "name": "01 Body Conveyor",
+      "type": "part",
+      "packageId": "oip.belt-conveyor",
+      "position": [
+        0,
+        0.8,
+        0
+      ],
+      "rotationY": 0,
+      "params": {
+        "shapePreset": "straight",
+        "segments": [
+          [
+            4,
+            0
+          ]
+        ],
+        "width": 0.8,
+        "height": 0.17,
+        "standHeight": 0.8,
+        "fpmUnits": false,
+        "speedFpm": 394,
+        "speed": 0.25,
+        "accelTime": 0.5,
+        "decelTime": 0.5,
+        "friction": 0.59,
+        "beltColor": "#ffffff",
+        "beltTexture": "standard",
+        "frameRails": true,
+        "leftGuard": true,
+        "rightGuard": true,
+        "guardOpenings": [],
+        "guardHoles": [],
+        "guardMitres": [],
+        "railCuts": [],
+        "guardExtents": [],
+        "legs": true,
+        "legRests": [],
+        "tailLeg": true,
+        "tailLegOffset": 0.15,
+        "tailLegClearance": 1,
+        "headLeg": true,
+        "headLegOffset": 0.15,
+        "headLegClearance": 1,
+        "middleLegs": true,
+        "legSpacing": 3.05,
+        "exclusionStart": 0,
+        "exclusionEnd": 0,
+        "speedTag": "",
+        "speedFpmTag": "",
+        "runTag": "%QX0.0",
+        "runningTag": "",
+        "speedAt30": 2,
+        "speedAt30Fpm": 394,
+        "velocityTag": "",
+        "inchesPerPulse": 1,
+        "pulseTag": "",
+        "encoderTag": ""
+      }
+    },
+    {
+      "id": "LidConveyor",
+      "name": "02 Lid Conveyor",
+      "type": "part",
+      "packageId": "oip.belt-conveyor",
+      "position": [
+        0,
+        0.8,
+        2.4
+      ],
+      "rotationY": 0,
+      "params": {
+        "shapePreset": "straight",
+        "segments": [
+          [
+            4,
+            0
+          ]
+        ],
+        "width": 0.8,
+        "height": 0.17,
+        "standHeight": 0.8,
+        "fpmUnits": false,
+        "speedFpm": 394,
+        "speed": 0.25,
+        "accelTime": 0.5,
+        "decelTime": 0.5,
+        "friction": 0.59,
+        "beltColor": "#ffffff",
+        "beltTexture": "standard",
+        "frameRails": true,
+        "leftGuard": true,
+        "rightGuard": true,
+        "guardOpenings": [],
+        "guardHoles": [],
+        "guardMitres": [],
+        "railCuts": [],
+        "guardExtents": [],
+        "legs": true,
+        "legRests": [],
+        "tailLeg": true,
+        "tailLegOffset": 0.15,
+        "tailLegClearance": 1,
+        "headLeg": true,
+        "headLegOffset": 0.15,
+        "headLegClearance": 1,
+        "middleLegs": true,
+        "legSpacing": 3.05,
+        "exclusionStart": 0,
+        "exclusionEnd": 0,
+        "speedTag": "",
+        "speedFpmTag": "",
+        "runTag": "%QX0.1",
+        "runningTag": "",
+        "speedAt30": 2,
+        "speedAt30Fpm": 394,
+        "velocityTag": "",
+        "inchesPerPulse": 1,
+        "pulseTag": "",
+        "encoderTag": ""
+      }
+    },
+    {
+      "id": "AssemblyOut",
+      "name": "03 Assembly Out",
+      "type": "part",
+      "packageId": "oip.belt-conveyor",
+      "position": [
+        4.17,
+        0.8,
+        0
+      ],
+      "rotationY": 0,
+      "params": {
+        "shapePreset": "straight",
+        "segments": [
+          [
+            4,
+            0
+          ]
+        ],
+        "width": 0.8,
+        "height": 0.17,
+        "standHeight": 0.8,
+        "fpmUnits": false,
+        "speedFpm": 394,
+        "speed": 0.25,
+        "accelTime": 0.5,
+        "decelTime": 0.5,
+        "friction": 0.59,
+        "beltColor": "#ffffff",
+        "beltTexture": "standard",
+        "frameRails": true,
+        "leftGuard": true,
+        "rightGuard": true,
+        "guardOpenings": [],
+        "guardHoles": [],
+        "guardMitres": [],
+        "railCuts": [],
+        "guardExtents": [],
+        "legs": true,
+        "legRests": [],
+        "tailLeg": true,
+        "tailLegOffset": 0.15,
+        "tailLegClearance": 1,
+        "headLeg": true,
+        "headLegOffset": 0.15,
+        "headLegClearance": 1,
+        "middleLegs": true,
+        "legSpacing": 3.05,
+        "exclusionStart": 0,
+        "exclusionEnd": 0,
+        "speedTag": "",
+        "speedFpmTag": "",
+        "runTag": "%QX0.7",
+        "runningTag": "",
+        "speedAt30": 2,
+        "speedAt30Fpm": 394,
+        "velocityTag": "",
+        "inchesPerPulse": 1,
+        "pulseTag": "",
+        "encoderTag": ""
+      }
+    },
+    {
+      "id": "Inspection",
+      "name": "04 Inspection Conveyor",
+      "type": "part",
+      "packageId": "oip.belt-conveyor",
+      "position": [
+        8.34,
+        0.8,
+        0
+      ],
+      "rotationY": 0,
+      "params": {
+        "shapePreset": "straight",
+        "segments": [
+          [
+            4,
+            0
+          ]
+        ],
+        "width": 0.8,
+        "height": 0.17,
+        "standHeight": 0.8,
+        "fpmUnits": false,
+        "speedFpm": 394,
+        "speed": 0.25,
+        "accelTime": 0.5,
+        "decelTime": 0.5,
+        "friction": 0.59,
+        "beltColor": "#ffffff",
+        "beltTexture": "standard",
+        "frameRails": true,
+        "leftGuard": true,
+        "rightGuard": true,
+        "guardOpenings": [],
+        "guardHoles": [],
+        "guardMitres": [],
+        "railCuts": [],
+        "guardExtents": [],
+        "legs": true,
+        "legRests": [],
+        "tailLeg": true,
+        "tailLegOffset": 0.15,
+        "tailLegClearance": 1,
+        "headLeg": true,
+        "headLegOffset": 0.15,
+        "headLegClearance": 1,
+        "middleLegs": true,
+        "legSpacing": 3.05,
+        "exclusionStart": 0,
+        "exclusionEnd": 0,
+        "speedTag": "",
+        "speedFpmTag": "",
+        "runTag": "%QX1.0",
+        "runningTag": "",
+        "speedAt30": 2,
+        "speedAt30Fpm": 394,
+        "velocityTag": "",
+        "inchesPerPulse": 1,
+        "pulseTag": "",
+        "encoderTag": ""
+      }
+    },
+    {
+      "id": "Packing",
+      "name": "05 Packing Conveyor",
+      "type": "part",
+      "packageId": "oip.belt-conveyor",
+      "position": [
+        12.51,
+        0.8,
+        0
+      ],
+      "rotationY": 0,
+      "params": {
+        "shapePreset": "straight",
+        "segments": [
+          [
+            4,
+            0
+          ]
+        ],
+        "width": 0.8,
+        "height": 0.17,
+        "standHeight": 0.8,
+        "fpmUnits": false,
+        "speedFpm": 394,
+        "speed": 0.25,
+        "accelTime": 0.5,
+        "decelTime": 0.5,
+        "friction": 0.59,
+        "beltColor": "#ffffff",
+        "beltTexture": "standard",
+        "frameRails": true,
+        "leftGuard": true,
+        "rightGuard": true,
+        "guardOpenings": [],
+        "guardHoles": [],
+        "guardMitres": [],
+        "railCuts": [],
+        "guardExtents": [],
+        "legs": true,
+        "legRests": [],
+        "tailLeg": true,
+        "tailLegOffset": 0.15,
+        "tailLegClearance": 1,
+        "headLeg": true,
+        "headLegOffset": 0.15,
+        "headLegClearance": 1,
+        "middleLegs": true,
+        "legSpacing": 3.05,
+        "exclusionStart": 0,
+        "exclusionEnd": 0,
+        "speedTag": "",
+        "speedFpmTag": "",
+        "runTag": "%QX1.2",
+        "runningTag": "",
+        "speedAt30": 2,
+        "speedAt30Fpm": 394,
+        "velocityTag": "",
+        "inchesPerPulse": 1,
+        "pulseTag": "",
+        "encoderTag": ""
+      }
+    },
+    {
+      "id": "FinishedGoods",
+      "name": "06 Finished Goods Conveyor",
+      "type": "part",
+      "packageId": "oip.belt-conveyor",
+      "position": [
+        16.68,
+        0.8,
+        0
+      ],
+      "rotationY": 0,
+      "params": {
+        "shapePreset": "straight",
+        "segments": [
+          [
+            4,
+            0
+          ]
+        ],
+        "width": 0.8,
+        "height": 0.17,
+        "standHeight": 0.8,
+        "fpmUnits": false,
+        "speedFpm": 394,
+        "speed": 0.25,
+        "accelTime": 0.5,
+        "decelTime": 0.5,
+        "friction": 0.59,
+        "beltColor": "#ffffff",
+        "beltTexture": "standard",
+        "frameRails": true,
+        "leftGuard": true,
+        "rightGuard": true,
+        "guardOpenings": [],
+        "guardHoles": [],
+        "guardMitres": [],
+        "railCuts": [],
+        "guardExtents": [],
+        "legs": true,
+        "legRests": [],
+        "tailLeg": true,
+        "tailLegOffset": 0.15,
+        "tailLegClearance": 1,
+        "headLeg": true,
+        "headLegOffset": 0.15,
+        "headLegClearance": 1,
+        "middleLegs": true,
+        "legSpacing": 3.05,
+        "exclusionStart": 0,
+        "exclusionEnd": 0,
+        "speedTag": "",
+        "speedFpmTag": "",
+        "runTag": "%QX1.4",
+        "runningTag": "",
+        "speedAt30": 2,
+        "speedAt30Fpm": 394,
+        "velocityTag": "",
+        "inchesPerPulse": 1,
+        "pulseTag": "",
+        "encoderTag": ""
+      }
+    },
+    {
+      "id": "Shipping",
+      "name": "07 Shipping Conveyor",
+      "type": "part",
+      "packageId": "oip.belt-conveyor",
+      "position": [
+        20.85,
+        0.8,
+        0
+      ],
+      "rotationY": 0,
+      "params": {
+        "shapePreset": "straight",
+        "segments": [
+          [
+            4,
+            0
+          ]
+        ],
+        "width": 0.8,
+        "height": 0.17,
+        "standHeight": 0.8,
+        "fpmUnits": false,
+        "speedFpm": 394,
+        "speed": 0.25,
+        "accelTime": 0.5,
+        "decelTime": 0.5,
+        "friction": 0.59,
+        "beltColor": "#ffffff",
+        "beltTexture": "standard",
+        "frameRails": true,
+        "leftGuard": true,
+        "rightGuard": true,
+        "guardOpenings": [],
+        "guardHoles": [],
+        "guardMitres": [],
+        "railCuts": [],
+        "guardExtents": [],
+        "legs": true,
+        "legRests": [],
+        "tailLeg": true,
+        "tailLegOffset": 0.15,
+        "tailLegClearance": 1,
+        "headLeg": true,
+        "headLegOffset": 0.15,
+        "headLegClearance": 1,
+        "middleLegs": true,
+        "legSpacing": 3.05,
+        "exclusionStart": 0,
+        "exclusionEnd": 0,
+        "speedTag": "",
+        "speedFpmTag": "",
+        "runTag": "%QX1.5",
+        "runningTag": "",
+        "speedAt30": 2,
+        "speedAt30Fpm": 394,
+        "velocityTag": "",
+        "inchesPerPulse": 1,
+        "pulseTag": "",
+        "encoderTag": ""
+      }
+    },
+    {
+      "id": "BodyFeed",
+      "name": "Body Feed",
+      "type": "part",
+      "packageId": "oip.box-spawner",
+      "position": [
+        0.7,
+        1.35,
+        0
+      ],
+      "rotationY": 0,
+      "params": {
+        "boxesPerMinute": 3,
+        "fixedRate": true,
+        "product": "oip.box",
+        "productSettings": "",
+        "boxColor": "#d5a86b",
+        "boxColors": "",
+        "mixAttribute": "",
+        "mixValues": "",
+        "randomColors": false,
+        "length": 0.3,
+        "width": 0.3,
+        "height": 0.15,
+        "randomSize": false,
+        "mass": 10,
+        "disable": false,
+        "release": "enable",
+        "keepSpacing": false,
+        "conveyorId": "",
+        "runTag": "%QX0.2",
+        "countTag": ""
+      }
+    },
+    {
+      "id": "LidFeed",
+      "name": "Lid Feed",
+      "type": "part",
+      "packageId": "oip.box-spawner",
+      "position": [
+        0.7,
+        1.35,
+        2.4
+      ],
+      "rotationY": 0,
+      "params": {
+        "boxesPerMinute": 3,
+        "fixedRate": true,
+        "product": "oip.box",
+        "productSettings": "",
+        "boxColor": "#367db5",
+        "boxColors": "",
+        "mixAttribute": "",
+        "mixValues": "",
+        "randomColors": false,
+        "length": 0.3,
+        "width": 0.3,
+        "height": 0.1,
+        "randomSize": false,
+        "mass": 10,
+        "disable": false,
+        "release": "enable",
+        "keepSpacing": false,
+        "conveyorId": "",
+        "runTag": "%QX0.3",
+        "countTag": ""
+      }
+    },
+    {
+      "id": "AssemblyRobot",
+      "name": "Assembly Robot - pick lid and place",
+      "type": "part",
+      "packageId": "oip.six-axis-robot",
+      "position": [
+        3.2,
+        0,
+        1.2
+      ],
+      "rotationY": 0,
+      "params": {
+        "speed": 120,
+        "accel": 720,
+        "scale": 0.6,
+        "tool": "vacuum",
+        "toolSizeX": 0.5,
+        "toolSizeZ": 0.5,
+        "cupPitchX": 0.1,
+        "cupPitchZ": 0.1,
+        "cupMarginX": 0.05,
+        "cupMarginZ": 0.05,
+        "cupsEnabled": true,
+        "commandTag": "%QW2",
+        "executeTag": "%QX0.6",
+        "doneTag": "%IX0.6",
+        "enableTag": "",
+        "gripperTag": "",
+        "in1Tag": "",
+        "in2Tag": "",
+        "in3Tag": "",
+        "in4Tag": "",
+        "out1Tag": "%IX0.7",
+        "out2Tag": "",
+        "out3Tag": "",
+        "out4Tag": "",
+        "waypoints": [
+          [
+            0,
+            -45,
+            90,
+            25,
+            75,
+            0
+          ],
+          [
+            93.29,
+            11.45,
+            50.03,
+            0,
+            118.53,
+            0
+          ],
+          [
+            93.29,
+            2.59,
+            93.56,
+            0,
+            83.85,
+            0
+          ],
+          [
+            -92.63,
+            11.43,
+            50.05,
+            0,
+            118.52,
+            0
+          ],
+          [
+            -92.63,
+            3.48,
+            81.14,
+            0,
+            95.38,
+            0
+          ]
+        ],
+        "waypointNames": "Home\nPick High\nPick\nPlace High\nPlace",
+        "blendWaypoints": [],
+        "blendDeg": 12,
+        "jobs": [
+          [
+            0,
+            5,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            1,
+            0
+          ],
+          [
+            0,
+            1,
+            2,
+            0
+          ],
+          [
+            0,
+            2,
+            1,
+            0
+          ],
+          [
+            0,
+            3,
+            0.4,
+            0
+          ],
+          [
+            0,
+            1,
+            1,
+            0
+          ],
+          [
+            0,
+            1,
+            3,
+            0
+          ],
+          [
+            0,
+            1,
+            4,
+            0
+          ],
+          [
+            0,
+            2,
+            0,
+            0
+          ],
+          [
+            0,
+            3,
+            0.5,
+            0
+          ],
+          [
+            0,
+            5,
+            0,
+            1
+          ],
+          [
+            0,
+            1,
+            3,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ]
+        ],
+        "jobNames": "Assemble",
+        "pose": [
+          [
+            0,
+            -45,
+            90,
+            25,
+            75,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "id": "StartButton",
+      "name": "Start PB IX0.0",
+      "parent": "BodyConveyor",
+      "type": "part",
+      "packageId": "oip.push-button",
+      "position": [
+        0.3,
+        0.8,
+        -0.43
+      ],
+      "rotationY": 3.141593,
+      "params": {
+        "emergencyStop": false,
+        "text": "STOP",
+        "buttonColor": "#18aa4a",
+        "momentary": true,
+        "startPressed": false,
+        "startStruck": false,
+        "normallyClosed": false,
+        "lampSource": "press",
+        "tag": "%IX0.0",
+        "lampTag": ""
+      }
+    },
+    {
+      "id": "StopButton",
+      "name": "Stop PB IX0.1",
+      "parent": "BodyConveyor",
+      "type": "part",
+      "packageId": "oip.push-button",
+      "position": [
+        0.5,
+        0.8,
+        -0.43
+      ],
+      "rotationY": 3.141593,
+      "params": {
+        "emergencyStop": false,
+        "text": "STOP",
+        "buttonColor": "#b3140f",
+        "momentary": true,
+        "startPressed": false,
+        "startStruck": false,
+        "normallyClosed": false,
+        "lampSource": "press",
+        "tag": "%IX0.1",
+        "lampTag": ""
+      }
+    },
+    {
+      "id": "BodyDetected",
+      "name": "Body Detected IX0.2",
+      "type": "part",
+      "packageId": "oip.diffuse-sensor",
+      "position": [
+        1,
+        0.78,
+        -0.457
+      ],
+      "rotationY": 0,
+      "params": {
+        "maxRange": 0.84,
+        "mode": "diffuse",
+        "showBeam": true,
+        "normallyClosed": false,
+        "mark": "",
+        "tag": "%IX0.2"
+      }
+    },
+    {
+      "id": "BodyAtAssembly",
+      "name": "Body Assembly IX0.4",
+      "type": "part",
+      "packageId": "oip.diffuse-sensor",
+      "position": [
+        3.4,
+        0.78,
+        -0.457
+      ],
+      "rotationY": 0,
+      "params": {
+        "maxRange": 0.84,
+        "mode": "diffuse",
+        "showBeam": true,
+        "normallyClosed": false,
+        "mark": "",
+        "tag": "%IX0.4"
+      }
+    },
+    {
+      "id": "LidDetected",
+      "name": "Lid Detected IX0.3",
+      "type": "part",
+      "packageId": "oip.diffuse-sensor",
+      "position": [
+        1,
+        0.78,
+        1.943
+      ],
+      "rotationY": 0,
+      "params": {
+        "maxRange": 0.84,
+        "mode": "diffuse",
+        "showBeam": true,
+        "normallyClosed": false,
+        "mark": "",
+        "tag": "%IX0.3"
+      }
+    },
+    {
+      "id": "LidAtAssembly",
+      "name": "Lid Assembly IX0.5",
+      "type": "part",
+      "packageId": "oip.diffuse-sensor",
+      "position": [
+        3.4,
+        0.78,
+        1.943
+      ],
+      "rotationY": 0,
+      "params": {
+        "maxRange": 0.84,
+        "mode": "diffuse",
+        "showBeam": true,
+        "normallyClosed": false,
+        "mark": "",
+        "tag": "%IX0.5"
+      }
+    },
+    {
+      "id": "AssembledDetected",
+      "name": "Assembled IX1.0",
+      "type": "part",
+      "packageId": "oip.diffuse-sensor",
+      "position": [
+        6.2,
+        0.78,
+        -0.457
+      ],
+      "rotationY": 0,
+      "params": {
+        "maxRange": 0.84,
+        "mode": "diffuse",
+        "showBeam": true,
+        "normallyClosed": false,
+        "mark": "",
+        "tag": "%IX1.0"
+      }
+    },
+    {
+      "id": "InspectionDetected",
+      "name": "Inspection IX1.1",
+      "type": "part",
+      "packageId": "oip.diffuse-sensor",
+      "position": [
+        9.3,
+        0.78,
+        -0.457
+      ],
+      "rotationY": 0,
+      "params": {
+        "maxRange": 0.84,
+        "mode": "diffuse",
+        "showBeam": true,
+        "normallyClosed": false,
+        "mark": "",
+        "tag": "%IX1.1"
+      }
+    },
+    {
+      "id": "PackDetected",
+      "name": "Pack Position IX1.3",
+      "type": "part",
+      "packageId": "oip.diffuse-sensor",
+      "position": [
+        14.2,
+        0.78,
+        -0.457
+      ],
+      "rotationY": 0,
+      "params": {
+        "maxRange": 0.84,
+        "mode": "diffuse",
+        "showBeam": true,
+        "normallyClosed": false,
+        "mark": "",
+        "tag": "%IX1.3"
+      }
+    },
+    {
+      "id": "FinishedGoodsDetected",
+      "name": "Finished Goods IX1.5",
+      "type": "part",
+      "packageId": "oip.diffuse-sensor",
+      "position": [
+        18.6,
+        0.78,
+        -0.457
+      ],
+      "rotationY": 0,
+      "params": {
+        "maxRange": 0.84,
+        "mode": "diffuse",
+        "showBeam": true,
+        "normallyClosed": false,
+        "mark": "",
+        "tag": "%IX1.5"
+      }
+    },
+    {
+      "id": "ShipmentDetected",
+      "name": "Shipment IX1.6",
+      "type": "part",
+      "packageId": "oip.diffuse-sensor",
+      "position": [
+        23.2,
+        0.78,
+        -0.457
+      ],
+      "rotationY": 0,
+      "params": {
+        "maxRange": 0.84,
+        "mode": "diffuse",
+        "showBeam": true,
+        "normallyClosed": false,
+        "mark": "",
+        "tag": "%IX1.6"
+      }
+    },
+    {
+      "id": "BodyStopper",
+      "name": "Body Stopper QX0.4",
+      "type": "part",
+      "packageId": "oip.blade-stop",
+      "position": [
+        3.75,
+        0.8,
+        0
+      ],
+      "rotationY": 0,
+      "params": {
+        "width": 0.8,
+        "active": false,
+        "raiseHeight": 0.12,
+        "airPressureHeight": 0.07,
+        "tag": "%QX0.4"
+      }
+    },
+    {
+      "id": "LidStopper",
+      "name": "Lid Stopper QX0.5",
+      "type": "part",
+      "packageId": "oip.blade-stop",
+      "position": [
+        3.75,
+        0.8,
+        2.4
+      ],
+      "rotationY": 0,
+      "params": {
+        "width": 0.8,
+        "active": false,
+        "raiseHeight": 0.12,
+        "airPressureHeight": 0.07,
+        "tag": "%QX0.5"
+      }
+    },
+    {
+      "id": "RejectBranch",
+      "name": "Reject Branch - unverified",
+      "type": "part",
+      "packageId": "oip.belt-conveyor",
+      "position": [
+        11.2,
+        0.8,
+        0.45
+      ],
+      "rotationY": -1.570796,
+      "params": {
+        "shapePreset": "straight",
+        "segments": [
+          [
+            4,
+            0
+          ]
+        ],
+        "width": 0.8,
+        "height": 0.17,
+        "standHeight": 0.8,
+        "fpmUnits": false,
+        "speedFpm": 394,
+        "speed": 0.25,
+        "accelTime": 0.5,
+        "decelTime": 0.5,
+        "friction": 0.59,
+        "beltColor": "#ffffff",
+        "beltTexture": "standard",
+        "frameRails": true,
+        "leftGuard": true,
+        "rightGuard": true,
+        "guardOpenings": [],
+        "guardHoles": [],
+        "guardMitres": [],
+        "railCuts": [],
+        "guardExtents": [],
+        "legs": true,
+        "legRests": [],
+        "tailLeg": true,
+        "tailLegOffset": 0.15,
+        "tailLegClearance": 1,
+        "headLeg": true,
+        "headLegOffset": 0.15,
+        "headLegClearance": 1,
+        "middleLegs": true,
+        "legSpacing": 3.05,
+        "exclusionStart": 0,
+        "exclusionEnd": 0,
+        "speedTag": "",
+        "speedFpmTag": "",
+        "runTag": "",
+        "runningTag": "",
+        "speedAt30": 2,
+        "speedAt30Fpm": 394,
+        "velocityTag": "",
+        "inchesPerPulse": 1,
+        "pulseTag": "",
+        "encoderTag": ""
+      }
+    },
+    {
+      "id": "RejectDiverter",
+      "name": "Reject Diverter QX1.1",
+      "type": "part",
+      "packageId": "oip.diverter",
+      "position": [
+        11.2,
+        0.6,
+        -1.5135
+      ],
+      "rotationY": 3.141593,
+      "params": {
+        "diverted": false,
+        "divertTime": 0.25,
+        "divertDistance": 0.75,
+        "standHeight": 0.3847,
+        "tag": "%QX1.1"
+      }
+    },
+    {
+      "id": "RejectDetected",
+      "name": "Reject IX1.2",
+      "type": "part",
+      "packageId": "oip.diffuse-sensor",
+      "position": [
+        11.657,
+        0.78,
+        1.5
+      ],
+      "rotationY": -1.570796,
+      "params": {
+        "maxRange": 0.84,
+        "mode": "diffuse",
+        "showBeam": true,
+        "normallyClosed": false,
+        "mark": "",
+        "tag": "%IX1.2"
+      }
+    },
+    {
+      "id": "AssemblyCell",
+      "type": "part",
+      "packageId": "factory.case-cell",
+      "position": [
+        3.4,
+        0.8,
+        0
+      ],
+      "rotationY": 0,
+      "params": {
+        "mode": "assembly",
+        "startTag": "%QX0.6",
+        "readyTag": "%IX2.3",
+        "doneTag": "%IX2.4",
+        "validTag": "",
+        "goodTag": "",
+        "completeTag": "%QX2.0",
+        "debugRunningTag": "",
+        "debugRobotTag": "",
+        "debugMainTag": ""
+      }
+    },
+    {
+      "id": "InspectionCell",
+      "type": "part",
+      "packageId": "factory.case-cell",
+      "position": [
+        9.3,
+        0.8,
+        0
+      ],
+      "rotationY": 0,
+      "params": {
+        "mode": "inspection",
+        "startTag": "%QX1.7",
+        "readyTag": "",
+        "doneTag": "",
+        "validTag": "%IX2.0",
+        "goodTag": "%IX2.1"
+      }
+    },
+    {
+      "id": "PackingCell",
+      "type": "part",
+      "packageId": "factory.case-cell",
+      "position": [
+        14.2,
+        0.8,
+        0
+      ],
+      "rotationY": 0,
+      "params": {
+        "mode": "packing",
+        "startTag": "%QX1.3",
+        "readyTag": "",
+        "doneTag": "%IX1.4",
+        "validTag": "",
+        "goodTag": ""
+      }
+    },
+    {
+      "id": "SortEye",
+      "type": "part",
+      "packageId": "oip.diffuse-sensor",
+      "position": [
+        11.15,
+        0.78,
+        -0.457
+      ],
+      "rotationY": 0,
+      "params": {
+        "maxRange": 0.84,
+        "tag": "%IX2.2"
+      }
+    },
+    {
+      "id": "ShippingOutlet",
+      "type": "part",
+      "packageId": "oip.despawner",
+      "position": [
+        24.35,
+        0.8,
+        0
+      ],
+      "rotationY": 0,
+      "params": {
+        "length": 0.5,
+        "width": 0.8,
+        "height": 0.6
+      }
+    },
+    {
+      "id": "RejectOutlet",
+      "type": "part",
+      "packageId": "oip.despawner",
+      "position": [
+        11.2,
+        0.8,
+        4.2
+      ],
+      "rotationY": 0,
+      "params": {
+        "length": 0.8,
+        "width": 0.5,
+        "height": 0.6
+      }
+    },
+    {
+      "id": "BodyRackMES",
+      "type": "part",
+      "packageId": "factory.stock-display",
+      "position": [
+        -1.8,
+        0,
+        -1.45
+      ],
+      "rotationY": 0,
+      "params": {
+        "stockTag": "%QW5",
+        "item": "BODY"
+      }
+    },
+    {
+      "id": "LidRackMES",
+      "type": "part",
+      "packageId": "factory.stock-display",
+      "position": [
+        -1.8,
+        0,
+        3.85
+      ],
+      "rotationY": 0,
+      "params": {
+        "stockTag": "%QW6",
+        "item": "LID"
+      }
+    },
+    {
+      "id": "ShippingTruckMES",
+      "type": "part",
+      "packageId": "factory.dispatch-truck",
+      "position": [
+        25.3,
+        0,
+        -1.7
+      ],
+      "rotationY": 0,
+      "params": {
+        "loadTag": "%QW3",
+        "targetTag": "%QW4"
+      }
+    }
+  ],
+  "plcs": [
+    {
+      "name": "PLC1",
+      "runsOn": "app",
+      "protocol": "serve",
+      "connect": true
+    }
+  ]
+}

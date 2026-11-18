@@ -1,0 +1,58 @@
+{
+  "name": "INDY completion gates assembly only when bridge is enabled",
+  "duration": 32,
+  "inputs": [
+    {
+      "at": 0,
+      "tag": "MesStop",
+      "value": false
+    },
+    {
+      "at": 0,
+      "tag": "IndyBridgeEnabled",
+      "value": true
+    },
+    {
+      "at": 20,
+      "tag": "IndyDone",
+      "value": true
+    },
+    {
+      "at": 27,
+      "tag": "IndyDone",
+      "value": false
+    }
+  ],
+  "checks": [
+    {
+      "at": 18,
+      "tag": "AssemblyPhase",
+      "equals": 1
+    },
+    {
+      "at": 18,
+      "tag": "M6",
+      "equals": false
+    },
+    {
+      "at": 18,
+      "tag": "OipRobotComplete",
+      "equals": true
+    },
+    {
+      "at": 21,
+      "tag": "M6",
+      "equals": true
+    },
+    {
+      "at": 21,
+      "tag": "AssemblyPhase",
+      "equals": 2
+    },
+    {
+      "at": 32,
+      "tag": "FaultCode",
+      "equals": 0
+    }
+  ]
+}

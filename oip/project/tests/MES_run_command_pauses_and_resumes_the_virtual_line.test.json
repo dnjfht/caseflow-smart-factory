@@ -1,0 +1,53 @@
+{
+  "name": "MES run command pauses and resumes the virtual line",
+  "duration": 45,
+  "inputs": [
+    {
+      "at": 0,
+      "tag": "MesStop",
+      "value": false
+    },
+    {
+      "at": 5,
+      "tag": "MesStop",
+      "value": true
+    },
+    {
+      "at": 15,
+      "tag": "MesStop",
+      "value": false
+    }
+  ],
+  "checks": [
+    {
+      "at": 4,
+      "tag": "M0",
+      "equals": true
+    },
+    {
+      "at": 6,
+      "tag": "M0",
+      "equals": false
+    },
+    {
+      "at": 6,
+      "tag": "BodyConveyorRun",
+      "equals": false
+    },
+    {
+      "at": 16,
+      "tag": "M0",
+      "equals": true
+    },
+    {
+      "at": 16,
+      "tag": "BodyConveyorRun",
+      "equals": true
+    },
+    {
+      "at": 45,
+      "tag": "LaunchedCount",
+      "min": 2
+    }
+  ]
+}

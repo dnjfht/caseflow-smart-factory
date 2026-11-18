@@ -1,0 +1,29 @@
+{
+  "version": 7,
+  "name": "SmartFactory_CaseAssembly_Final",
+  "packages": [
+    "parts/oip.belt-conveyor",
+    "parts/oip.box-spawner",
+    "parts/oip.box",
+    "parts/oip.six-axis-robot",
+    "parts/oip.push-button",
+    "parts/oip.diffuse-sensor",
+    "parts/oip.blade-stop",
+    "parts/oip.diverter",
+    "parts/factory.case-cell",
+    "parts/oip.despawner",
+    "parts/factory.stock-display",
+    "parts/factory.dispatch-truck"
+  ],
+  "scene": "scene.json",
+  "program": [
+    "plc/program.st"
+  ],
+  "stScanMs": 10,
+  "tests": [
+    "tests/Three_accepted_cases_with_rejected_replacements_and_overlapping_assembly.test.json",
+    "tests/MES_run_command_pauses_and_resumes_the_virtual_line.test.json",
+    "tests/MES_material_shortage_holds_new_feed_while_existing_product_finishes.test.json",
+    "tests/INDY_completion_gates_assembly_only_when_bridge_is_enabled.test.json"
+  ]
+}

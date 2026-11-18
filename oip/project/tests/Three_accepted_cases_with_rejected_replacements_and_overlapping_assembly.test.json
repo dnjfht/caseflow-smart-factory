@@ -1,0 +1,161 @@
+{
+  "name": "Three accepted cases with rejected replacements and overlapping assembly",
+  "duration": 360,
+  "inputs": [
+    {
+      "at": 0,
+      "tag": "MesStop",
+      "value": false
+    }
+  ],
+  "checks": [
+    {
+      "tag": "M3",
+      "eventually": true,
+      "equals": true
+    },
+    {
+      "tag": "M4",
+      "eventually": true,
+      "equals": true
+    },
+    {
+      "tag": "M6",
+      "eventually": true,
+      "equals": true
+    },
+    {
+      "tag": "M7",
+      "eventually": true,
+      "equals": true
+    },
+    {
+      "tag": "M8",
+      "eventually": true,
+      "equals": true
+    },
+    {
+      "tag": "M9",
+      "eventually": true,
+      "equals": true
+    },
+    {
+      "tag": "M10",
+      "eventually": true,
+      "equals": true
+    },
+    {
+      "tag": "M11",
+      "eventually": true,
+      "equals": true
+    },
+    {
+      "tag": "M12",
+      "eventually": true,
+      "equals": true
+    },
+    {
+      "tag": "M13",
+      "eventually": true,
+      "equals": true
+    },
+    {
+      "tag": "M14",
+      "eventually": true,
+      "equals": true
+    },
+    {
+      "tag": "M15",
+      "eventually": true,
+      "equals": true
+    },
+    {
+      "tag": "ProducedCount",
+      "at": 360,
+      "equals": 3
+    },
+    {
+      "tag": "RejectCount",
+      "at": 360,
+      "min": 2
+    },
+    {
+      "tag": "MachineState",
+      "at": 360,
+      "equals": 6
+    },
+    {
+      "at": 360,
+      "probe": {
+        "passed": {
+          "zone": {
+            "min": [
+              10.7,
+              0.8,
+              1.5
+            ],
+            "max": [
+              11.7,
+              1.5,
+              2.5
+            ]
+          }
+        }
+      },
+      "min": 2
+    },
+    {
+      "at": 360,
+      "probe": {
+        "passed": {
+          "marked": "packed",
+          "zone": {
+            "min": [
+              22.8,
+              0.8,
+              -0.4
+            ],
+            "max": [
+              23.6,
+              1.5,
+              0.4
+            ]
+          }
+        }
+      },
+      "min": 3
+    },
+    {
+      "at": 360,
+      "probe": {
+        "count": {}
+      },
+      "max": 0
+    },
+    {
+      "tag": "LaunchedCount",
+      "at": 30,
+      "min": 2
+    },
+    {
+      "tag": "ShippedCount",
+      "at": 30,
+      "equals": 0
+    },
+    {
+      "tag": "LaunchedCount",
+      "at": 360,
+      "equals": 5
+    },
+    {
+      "tag": "RejectCount",
+      "at": 360,
+      "equals": 2
+    },
+    {
+      "tag": "ShippedCount",
+      "at": 360,
+      "equals": 3
+    }
+  ]
+}
