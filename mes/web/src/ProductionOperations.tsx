@@ -11,6 +11,7 @@ import './ProductionOperations.css'
 
 function localDate(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 function localTime(value:string){return value?new Date(value).toLocaleString('ko-KR'):'—'}
+function nextPlanCode(plans:Row[],saved=''){const ids=[...plans.map(p=>s(p,'PLAN_CODE')),saved].map(code=>Number(code.match(/\d+$/)?.[0]||0));return `PLAN-${String(Math.max(0,...ids)+1).padStart(3,'0')}`}
 async function request(path:string,method='GET',body?:object){const r=await fetch(path,{method,headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined});if(!r.ok){const e=await r.json().catch(()=>({}));throw Error(e.detail||e.message||`HTTP ${r.status}`)}return r.json()}
 function Title({label,title,aside}:{label:string;title:string;aside?:string}){return <div className="op-title"><div><small>{label}</small><h2>{title}</h2></div>{aside&&<span>{aside}</span>}</div>}
 function Table({heads,rows}:{heads:string[];rows:ReactNode[][]}){return <div className="op-table-wrap"><table><thead><tr>{heads.map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{rows.length?rows.map((r,i)=><tr key={i}>{r.map((v,j)=><td key={j} data-label={heads[j]}>{v}</td>)}</tr>):<tr><td colSpan={heads.length}>아직 기록이 없습니다.</td></tr>}</tbody></table></div>}
@@ -27,7 +28,7 @@ export default function ProductionOperations({page,data,onUpdate}:{page:Page;dat
   const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[messageOk,setMessageOk]=useState(false)
   const [qualitySearch,setQualitySearch]=useState(''),[qualityStatus,setQualityStatus]=useState('ALL'),[qualityPage,setQualityPage]=useState(1)
   useEffect(()=>{setMessage('');setMessageOk(false)},[page])
-  useEffect(()=>{setPlanCode(current=>data.plans.some(p=>s(p,'PLAN_CODE')===current)?`PLAN-${String(Math.max(0,...data.plans.map(p=>Number(s(p,'PLAN_CODE').match(/\d+$/)?.[0]||0)))+1).padStart(3,'0')}`:current)},[data.plans])
+  useEffect(()=>{setPlanCode(current=>data.plans.some(p=>s(p,'PLAN_CODE')===current)?nextPlanCode(data.plans):current)},[data.plans])
   const stock=Object.fromEntries(data.inventory.map(r=>[s(r,'SKU'),n(r,'QUANTITY')]))
   async function mutate(path:string,body?:object){
     setBusy(true);setMessage('')
@@ -38,11 +39,15 @@ export default function ProductionOperations({page,data,onUpdate}:{page:Page;dat
         if(!supplier.trim()||!origin.trim()||!receivedBy.trim())throw Error('공급처·입고 출처·입고 담당자를 입력하세요.')
       }
       const saved=await request(path,'POST',body)
-      await onUpdate()
+      await onUpdate().catch(()=>{})
+      if(path==='/api/plans')setPlanCode(nextPlanCode(data.plans,String(saved.PLAN_CODE||'')))
       if(path==='/api/lots')setLotCode('')
       setMessageOk(true)
       setMessage(path==='/api/plans'?`${saved.PLAN_CODE} 저장 완료 · 아래 목록에서 계획 승인 → 작업지시 발행 → 작업 지시 페이지에서 생산 시작 순서로 진행하세요.`:path==='/api/lots'?`${saved.LOT_CODE} 입고 완료 · ${saved.RECEIVED_QTY}개 등록했습니다. 아래 LOT 목록과 재고 수량을 확인하세요.`:'처리되었습니다.')
-    }catch(e){setMessageOk(false);setMessage(e instanceof Error?e.message:String(e))}
+    }catch(e){
+      if(path==='/api/plans')await onUpdate().catch(()=>{})
+      setMessageOk(false);setMessage(e instanceof Error?e.message:String(e))
+    }
     finally{setBusy(false)}
   }
   async function lookup(mode:'forward'|'backward'){
