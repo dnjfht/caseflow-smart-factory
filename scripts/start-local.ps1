@@ -7,6 +7,7 @@ $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $backend = Join-Path $repo 'mes/backend'
 $web = Join-Path $repo 'mes/web'
+$localBuild = Join-Path $repo '../../work/oip-source/apps/desktop/release/win-unpacked/Open Industry Project.exe'
 
 function Test-Port([int]$Port) {
     try {
@@ -21,7 +22,6 @@ function Test-Port([int]$Port) {
 
 if (-not (Test-Port 4843) -or -not (Test-Port 5189)) {
     if (-not $OipExe) {
-        $localBuild = Join-Path $repo '../../work/oip-source/apps/desktop/release/win-unpacked/Open Industry Project.exe'
         if (Test-Path -LiteralPath $localBuild) { $OipExe = (Resolve-Path -LiteralPath $localBuild).Path }
     }
     if (-not $OipExe -or -not (Test-Path -LiteralPath $OipExe)) {
@@ -29,6 +29,15 @@ if (-not (Test-Port 4843) -or -not (Test-Port 5189)) {
     }
     Start-Process -FilePath $OipExe -WindowStyle Hidden
     Write-Host 'OIP 실행을 요청했습니다. 마지막으로 열었던 공정이 자동 복원되는지 확인하세요.'
+} elseif (Test-Path -LiteralPath $localBuild) {
+    $connection = Get-NetTCPConnection -State Listen -LocalPort 4843 -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($connection) {
+        $running = Get-CimInstance Win32_Process -Filter "ProcessId=$($connection.OwningProcess)"
+        $patchedPath = (Resolve-Path -LiteralPath $localBuild).Path
+        if ($running.ExecutablePath -and $running.ExecutablePath -ne $patchedPath) {
+            Write-Warning '현재 OIP가 패치 실행본이 아닙니다. 진행 중인 작업을 마친 뒤 원본 OIP를 종료하고 이 스크립트를 다시 실행하세요.'
+        }
+    }
 }
 
 if (-not (Test-Port 8085)) {
