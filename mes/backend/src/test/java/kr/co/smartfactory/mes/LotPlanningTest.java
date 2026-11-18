@@ -50,13 +50,20 @@ class LotPlanningTest {
     }
 
     @Test
-    void plannedStartTimeIsStoredAndBlocksEarlyRelease() {
+    void plannedStartTimeIsStoredAndOrderCanBeReleasedWhileAnotherRuns() {
         LocalDateTime start = LocalDateTime.now().plusHours(2);
         Map<String,Object> plan = mes.createPlan("PLAN-TIMED",1,start.toLocalDate(),start.toLocalTime(),start.toLocalDate(),"고객사 시험센터","생산계획 담당자");
         long planId = ((Number)plan.get("ID")).longValue();
         mes.approvePlan(planId,"생산팀장");
         assertThat(mes.plans().stream().filter(row -> "PLAN-TIMED".equals(row.get("PLAN_CODE"))).findFirst().orElseThrow().get("PLANNED_START_TIME")).isNotNull();
-        assertThatThrownBy(() -> mes.releasePlan(planId)).hasMessageContaining("예정");
+        db.update("INSERT INTO mes_order(order_code,target_qty,status) VALUES ('WO-OTHER-RUNNING',1,'RUNNING')");
+        try {
+            Map<String,Object> order = mes.releasePlan(planId);
+            assertThat(order.get("STATUS")).isEqualTo("CREATED");
+            assertThat(mes.plans().stream().filter(row -> "PLAN-TIMED".equals(row.get("PLAN_CODE"))).findFirst().orElseThrow().get("STATUS")).isEqualTo("RELEASED");
+        } finally {
+            db.update("UPDATE mes_order SET status='COMPLETE' WHERE order_code='WO-OTHER-RUNNING'");
+        }
     }
 
     @Test

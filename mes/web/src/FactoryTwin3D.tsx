@@ -1,14 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import './FactoryTwin3D.css'
 
 type Part = { id:string; name:string; package:string; position:[number,number,number]; rotationY:number }
 type Cargo = { id:number; product:string; position:[number,number,number]; size:[number,number,number]; color:string; yawDeg:number }
 type Layout = { running:boolean; parts:Part[] }
-type Runtime = { running:boolean; simTime:number; count:number; cargo:Cargo[] }
+type Runtime = { running:boolean; simTime:number; count:number; cargo:Cargo[]; assemblyPhase?:number; packingPhase?:number; mesStop?:boolean }
 
 const names:Record<string,string>={
   'oip.belt-conveyor':'이송 컨베이어','oip.six-axis-robot':'조립 로봇',
@@ -33,11 +31,16 @@ export default function FactoryTwin3D(){
   const [status,setStatus]=useState('현장 연결 중')
   const [time,setTime]=useState(0)
   const [count,setCount]=useState(0)
+  const [activity,setActivity]=useState('설비 대기')
+  const [renderError,setRenderError]=useState(false)
   useEffect(()=>{
     const element=host.current;if(!element)return
     const scene=new THREE.Scene();scene.background=new THREE.Color('#dbe6e5');scene.fog=new THREE.Fog('#dbe6e5',38,78)
     const camera=new THREE.PerspectiveCamera(48,1,.1,150);camera.position.set(13,20,29)
-    const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.shadowMap.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace
+    let renderer:THREE.WebGLRenderer
+    try{renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'})}
+    catch{setRenderError(true);setStatus('3D 가속 재시작 필요');return}
+    renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.shadowMap.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace
     element.appendChild(renderer.domElement)
     const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(11,0,0);controls.enableDamping=true;controls.maxDistance=65;controls.minDistance=3;controls.maxPolarAngle=Math.PI/2.02;controls.update()
     scene.add(new THREE.HemisphereLight('#ffffff','#a0b8ad',2.2))
@@ -48,6 +51,9 @@ export default function FactoryTwin3D(){
     const dynamicGroup=new THREE.Group();scene.add(dynamicGroup)
     const cargoMeshes=new Map<number,{mesh:THREE.Mesh;target:THREE.Vector3;seen:boolean}>()
     const partMeshes:THREE.Object3D[]=[]
+    const robotArms:THREE.Group[]=[]
+    const packingHeads:THREE.Group[]=[]
+    let assemblyPhase=0,packingPhase=0,stopped=true
     const box=(parent:THREE.Object3D,size:[number,number,number],color:string,x=0,y=0,z=0)=>{
       const mesh=new THREE.Mesh(new THREE.BoxGeometry(...size),new THREE.MeshStandardMaterial({color,roughness:.68,metalness:.12}));mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh
     }
@@ -61,8 +67,6 @@ export default function FactoryTwin3D(){
     }
     box(scene,[35,3.2,.08],'#bdc9c4',11,2.75,-6.35)
     for(let x=-3;x<29;x+=3.5)box(scene,[2.8,1.35,.06],'#79a3a6',x,2.6,-6.27)
-    const draco=new DRACOLoader();draco.setDecoderPath('/assets/factory/draco/')
-    const gltf=new GLTFLoader();gltf.setDRACOLoader(draco)
     const resize=()=>{const width=Math.max(1,Math.min(element.clientWidth,2400)),height=Math.max(1,element.clientHeight);camera.aspect=width/height;camera.updateProjectionMatrix();renderer.setSize(width,height,false)}
     const observer=new ResizeObserver(resize);observer.observe(element);resize()
     let disposed=false
@@ -83,21 +87,28 @@ export default function FactoryTwin3D(){
           for(const sign of [-1,1])for(const end of [-1,1])box(group,[.07,.76,.07],'#748e8e',end*(length/2-.2),-.48,sign*.26)
           partMeshes.push(...group.children)
         }else if(part.package==='oip.six-axis-robot'){
-          box(group,[.55,.25,.55],'#355866',0,.15,0)
-          box(group,[.23,.9,.23],'#e9894f',0,.7,0)
-          box(group,[.73,.18,.2],'#df7548',.35,1.16,0)
-          box(group,[.12,.4,.15],'#27434b',.7,.9,0)
-          partMeshes.push(...group.children)
-          gltf.load('/assets/factory/assembly-robot.glb',loaded=>{
-            if(disposed)return
-            for(const child of group.children)child.visible=false
-            const model=loaded.scene;model.rotation.y=-Math.PI/2
-            const bounds=new THREE.Box3().setFromObject(model),height=bounds.max.y-bounds.min.y
-            const scale=height>0?1.35/height:1;model.scale.setScalar(scale)
-            model.position.y=-bounds.min.y*scale
-            model.traverse(object=>{if(object instanceof THREE.Mesh){object.castShadow=true;object.receiveShadow=true;partMeshes.push(object)}})
-            group.add(model)
-          },undefined,()=>{})
+          const body=new THREE.MeshStandardMaterial({color:'#e8eeec',roughness:.36,metalness:.15})
+          const joint=new THREE.MeshStandardMaterial({color:'#537993',roughness:.43,metalness:.2})
+          const cylinder=(parent:THREE.Object3D,radius:number,length:number,x:number,y:number,z:number,angle=0)=>{
+            const mesh=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,length,24),body)
+            mesh.position.set(x,y,z);mesh.rotation.z=angle;mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh)
+          }
+          const pivot=(parent:THREE.Object3D,radius:number,x:number,y:number,z:number)=>{
+            const mesh=new THREE.Mesh(new THREE.SphereGeometry(radius,20,14),joint)
+            mesh.position.set(x,y,z);mesh.castShadow=true;parent.add(mesh)
+          }
+          box(group,[.76,.12,.76],'#355866',0,.08,0)
+          cylinder(group,.22,.55,0,.41,0)
+          pivot(group,.26,0,.72,0)
+          const arm=new THREE.Group();arm.position.y=.72;group.add(arm);robotArms.push(arm)
+          cylinder(arm,.17,.73,.23,.31,0,-.72)
+          pivot(arm,.22,.46,.62,0)
+          cylinder(arm,.145,.64,.72,.84,0,-.82)
+          pivot(arm,.17,.96,1.06,0)
+          cylinder(arm,.105,.31,1.04,.86,0,.42)
+          box(arm,[.12,.34,.15],'#486777',1.08,.63,0)
+          for(const x of [-.08,.08])box(arm,[.045,.22,.045],'#344d55',1.08+x,.42,0)
+          partMeshes.push(...group.children,...arm.children)
         }else if(part.package==='oip.box-spawner'){
           box(group,[.7,.15,.65],'#364f55',0,.55,0);box(group,[.09,.9,.09],'#738d89',-.3,.1,-.27);box(group,[.09,.9,.09],'#738d89',.3,.1,.27)
           box(group,[.48,.32,.42],'#d7aa62',0,.37,0);partMeshes.push(...group.children)
@@ -122,6 +133,12 @@ export default function FactoryTwin3D(){
           const marker=labelSprite(station);marker.position.set(0,1.7,0);group.add(marker)
           for(const x of [-.75,.75])box(group,[.055,1.75,.055],'#527d79',x,.85,-.65)
           box(group,[1.65,.09,.11],'#4d7774',0,1.72,-.65)
+          if(station==='포장'){
+            const head=new THREE.Group();head.position.set(0,1.5,0);group.add(head);packingHeads.push(head)
+            box(head,[.7,.13,.7],'#6d8793')
+            for(const side of [-1,1])box(head,[.09,.48,.7],'#a2b2ad',side*.38,-.26,0)
+            box(group,[.9,.09,.8],'#c79b69',0,.16,0)
+          }
         }
       }
       setStatus(layout.running?'실시간 연결':'현장 대기')
@@ -140,7 +157,11 @@ export default function FactoryTwin3D(){
           value.target.set(...item.position);value.mesh.rotation.y=(item.yawDeg||0)*Math.PI/180;value.seen=true
         }
         for(const [id,value] of cargoMeshes)if(!value.seen){dynamicGroup.remove(value.mesh);value.mesh.geometry.dispose();(value.mesh.material as THREE.Material).dispose();cargoMeshes.delete(id)}
-        setTime(state.simTime);setCount(state.count);setStatus(state.running?'실시간 연결':'현장 대기')
+        setTime(Number.isFinite(state.simTime)?state.simTime:0)
+        setCount(Number.isFinite(state.count)?state.count:0)
+        setStatus(state.running?'실시간 연결':'현장 대기')
+        assemblyPhase=state.assemblyPhase??0;packingPhase=state.packingPhase??0;stopped=state.mesStop??true
+        setActivity(stopped?'현장 정지':assemblyPhase===1?'로봇 조립 중':assemblyPhase===2?'조립품 배출 중':packingPhase===1?'포장 중':packingPhase===2?'포장품 배출 중':'설비 대기')
       }catch{if(!disposed)setStatus('현장 연결 대기')}
     }
     void update();const poll=window.setInterval(update,350)
@@ -153,8 +174,12 @@ export default function FactoryTwin3D(){
     }
     renderer.domElement.addEventListener('click',click)
     let frame=0
-    const draw=()=>{controls.update();for(const value of cargoMeshes.values())value.mesh.position.lerp(value.target,.28);renderer.render(scene,camera);frame=requestAnimationFrame(draw)};draw()
-    return()=>{disposed=true;clearInterval(poll);cancelAnimationFrame(frame);observer.disconnect();renderer.domElement.removeEventListener('click',click);controls.dispose();draco.dispose();scene.traverse(object=>{if(object instanceof THREE.Mesh){object.geometry.dispose();const materials=Array.isArray(object.material)?object.material:[object.material];materials.forEach(material=>material.dispose())}});renderer.dispose();element.removeChild(renderer.domElement)}
+    const draw=()=>{controls.update();for(const value of cargoMeshes.values())value.mesh.position.lerp(value.target,.28)
+      const t=performance.now()*.001
+      for(const arm of robotArms){const active=!stopped&&assemblyPhase>0;arm.rotation.y=THREE.MathUtils.lerp(arm.rotation.y,active?Math.sin(t*3)*.55:0,.1);arm.rotation.z=THREE.MathUtils.lerp(arm.rotation.z,active?Math.sin(t*3+1)*.13:0,.1)}
+      for(const head of packingHeads)head.position.y=THREE.MathUtils.lerp(head.position.y,!stopped&&packingPhase===1?1.12:1.5,.1)
+      renderer.render(scene,camera);frame=requestAnimationFrame(draw)};draw()
+    return()=>{disposed=true;clearInterval(poll);cancelAnimationFrame(frame);observer.disconnect();renderer.domElement.removeEventListener('click',click);controls.dispose();scene.traverse(object=>{if(object instanceof THREE.Mesh){object.geometry.dispose();const materials=Array.isArray(object.material)?object.material:[object.material];materials.forEach(material=>material.dispose())}});renderer.dispose();element.removeChild(renderer.domElement)}
   },[])
-  return <div className="factory-twin-wrap"><div className="factory-twin-canvas" ref={host}/><div className="factory-twin-bar"><span className={status==='실시간 연결'?'ok':''}>● {status}</span><span>현장 시간 {time.toFixed(1)}초</span><span>이송 중 제품 {count}개</span><span>드래그 회전 · 휠 확대 · 우클릭 이동</span></div>{selected&&<div className="factory-twin-selected"><strong>{selected.name||names[selected.package]||'설비'}</strong><span>{names[selected.package]||'공정 설비'} · 위치 {selected.position.map(v=>v.toFixed(1)).join(', ')} m</span><button onClick={()=>setSelected(null)}>닫기</button></div>}</div>
+  return <div className="factory-twin-wrap"><div className="factory-twin-canvas" ref={host}>{renderError&&<div className="factory-twin-fallback"><img src="/assets/factory/factory-preview.jpg" alt="현장 설비 미리보기"/><p>브라우저의 3D 가속이 중지됐습니다. 브라우저를 다시 실행하면 실시간 3D 화면을 볼 수 있습니다.</p></div>}</div><div className="factory-twin-bar"><span className={status==='실시간 연결'?'ok':''}>● {status}</span><span>{activity}</span><span>현장 시간 {time.toFixed(1)}초</span><span>이송 중 제품 {count}개</span><span>드래그 회전 · 휠 확대 · 우클릭 이동</span></div>{selected&&<div className="factory-twin-selected"><strong>{selected.name||names[selected.package]||'설비'}</strong><span>{names[selected.package]||'공정 설비'} · 위치 {selected.position.map(v=>v.toFixed(1)).join(', ')} m</span><button onClick={()=>setSelected(null)}>닫기</button></div>}</div>
 }

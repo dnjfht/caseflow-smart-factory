@@ -1,6 +1,9 @@
 .factory-twin-wrap{position:relative;width:100%;max-width:100%;min-width:0;border:1px solid #d5e4dd;border-radius:12px;overflow:hidden;background:#dbe6e5;box-sizing:border-box}
 .factory-twin-canvas{width:100%;min-width:0;height:clamp(370px,42vw,650px);overflow:hidden}
 .factory-twin-canvas canvas{display:block;width:100%!important;height:100%!important;touch-action:none}
+.factory-twin-fallback{position:relative;width:100%;height:100%;display:grid;place-items:center;background:#dbe6e5}
+.factory-twin-fallback img{width:100%;height:100%;object-fit:cover}
+.factory-twin-fallback p{position:absolute;left:16px;right:16px;bottom:14px;margin:0;padding:11px 14px;border-radius:8px;background:#17343fe6;color:white;font-size:13px;line-height:1.5}
 .factory-twin-bar{display:flex;flex-wrap:wrap;gap:8px 18px;padding:10px 14px;background:#f5faf7;color:#526d69;font-size:11px}
 .factory-twin-bar .ok{color:#20825e;font-weight:700}
 .factory-twin-selected{position:absolute;left:14px;top:14px;display:grid;gap:5px;padding:12px 14px;border:1px solid #bad9cc;border-radius:9px;background:#ffffffed;box-shadow:0 8px 22px #223f3322;color:#23454a;font-size:11px}

@@ -28,7 +28,7 @@ MES 설비·로봇 페이지에서 승인된 데모 동작과 속도(50/75/100%)
 3. WSL: `source /opt/ros/jazzy/setup.bash && source /home/dnjfht/indy-ros2/install/setup.bash && ros2 launch indy_gazebo indy_gazebo.launch.py indy_type:=indy7 launch_rviz:=false`.
 4. WSL `ip route show default`에서 `via` 뒤의 윈도우 WSL 어댑터 IP 확인. Windows에서 같은 IP로 `python wsl_opc_relay.py --bind <IP>` 실행. 릴레이는 **WSL 가상 어댑터에만** 바인딩해 OIP의 loopback OPC UA 서버에 전달한다. 재시작 때 WSL 주소가 바뀔 수 있다.
 5. WSL: `source /opt/ros/jazzy/setup.bash && source /home/dnjfht/indy-ros2/install/setup.bash && /home/dnjfht/indy-ros2/bridge-venv/bin/python <이 폴더의 WSL 경로>/indy_plc_bridge.py --opc opc.tcp://<IP>:4844`. 첫 설치에만 `python3 -m venv --system-site-packages /home/dnjfht/indy-ros2/bridge-venv`와 해당 환경의 `pip install asyncua`가 필요하다.
-6. MES 설비·로봇 페이지에서 Gazebo/OIP/브리지가 준비됨인지 확인하고 승인된 데모 동작·속도를 저장, 연동 활성화. OIP Stop→Play로 새 작업 카운터 초기화 후 새 작업지시를 PLC 시작한다. `MOVING → COMPLETE → READY`, 완료 회수 증가와 포장·출고를 확인한다. 시험 후 연동 해제.
+6. MES 설비·로봇 페이지에서 Gazebo/OIP/브리지가 준비됨인지 확인하고 승인된 데모 동작·속도를 저장, 연동 활성화. 새 작업지시를 시작하면 MES가 이전 현장 누적 수량을 확인하고 필요할 때 자동으로 초기화한다. `MOVING → COMPLETE → READY`, 완료 회수 증가와 포장·출고를 확인한다. 시험 후 연동 해제.
 
 Windows MES·OIP와 WSL Gazebo/브리지/릴레이 프로세스는 컴퓨터 재시작 후 자동으로 올라오지 않는다. 위 순서를 다시 실행해야 한다.
 
@@ -48,6 +48,8 @@ Windows MES·OIP와 WSL Gazebo/브리지/릴레이 프로세스는 컴퓨터 재
 
 **화면에서 확인할 기준:** Gazebo에서 로봇 관절이 두 목표를 왕복하고, MES의 완료 횟수가 증가하며, OIP는 뚜껑 결합 후 검사·포장·출고로 넘어가야 한다. Gazebo에서만 움직이거나 MES에서만 수치가 바뀌면 브리지 상태와 OIP `RobotStart`/`IndyDone`을 각각 확인한다. 로봇이 움직여도 실제 뚜껑을 Gazebo에서 집는 것으로 설명하지 않는다.
 
-**OIP 화면 연결:** OIP 설정의 **Agent connections → Allow AI agents to connect**를 켜면 이 PC의 프로그램이 열린 OIP 프로젝트를 읽고 조작할 수 있다. MES는 이 로컬 연결에서 3초마다 현장 화면을 받아 공정 · 3D 현장에 보여준다. OIP 창을 최소화하거나 닫으면 현재 OIP 구현이 시뮬레이션을 일시 정지하거나 화면 수집을 중단하므로 창을 열린 상태로 둔다. 이 설정은 시연이 끝나면 끌 수 있다.
+**OIP 화면 연결:** OIP 설정의 **Agent connections → Allow AI agents to connect**를 켜면 이 PC의 프로그램이 열린 OIP 프로젝트를 읽고 조작할 수 있다. 현재 MES의 3D 현장은 OIP 현장 위치와 센서 데이터를 웹에서 다시 그린다. 배포된 데스크톱 실행본에는 최소화 중 일시 정지와 웹 그래픽 절전을 해제하는 패치가 필요하다. OIP 실행기 자체를 종료하면 PLC와 현장도 중단된다. 이 설정은 시연이 끝나면 끌 수 있다.
+
+**Gazebo 구분:** MES의 동작 단계·관절 각도·속도는 Gazebo 브리지로 전달할 설정이다. MES 페이지만 열어서는 Gazebo 물리 엔진과 ROS 2 액션 서버가 시작되지 않는다. OIP 화면에서 Gazebo가 꺼진 상태에도 보이는 로봇은 OIP에 내장된 별도의 6축 로봇이며 OIP PLC의 `RobotStart`와 `RobotDone`으로 동작한다. 실제 Indy7 연동을 증명하려면 Gazebo, 릴레이, 브리지의 실행 상태와 동작 완료 회수를 함께 확인해야 한다.
 
 참고: [Neuromeka 공식 Indy ROS2](https://github.com/neuromeka-robotics/indy-ros2/tree/jazzy-indyDCP3), [Gazebo 공식 GUI 안내](https://gazebosim.org/docs/latest/gui/).

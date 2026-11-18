@@ -148,7 +148,7 @@ IF M0 THEN
     END_IF;
     IF IndyBridgeEnabled AND NOT IndyDone THEN
       IndyWaitCycles := IndyWaitCycles + 1;
-      IF IndyWaitCycles > 3000 THEN FaultCode := 72; END_IF;
+      IF IndyWaitCycles > 12000 THEN FaultCode := 72; END_IF;
     END_IF;
     IF OipRobotComplete AND ((NOT IndyBridgeEnabled) OR IndyDone) THEN
       M6 := TRUE; AssemblyPhase := 2;

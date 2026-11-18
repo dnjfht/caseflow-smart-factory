@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 @RestController
 @RequestMapping("/api/scene")
@@ -21,8 +22,9 @@ public class SceneStateController {
     private static final URI AGENT = URI.create("http://127.0.0.1:5189/mcp");
     private final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
     private final ObjectMapper mapper;
+    private final MesService mes;
 
-    public SceneStateController(ObjectMapper mapper) { this.mapper = mapper; }
+    public SceneStateController(ObjectMapper mapper, MesService mes) { this.mapper = mapper; this.mes = mes; }
 
     @GetMapping("/layout")
     public ResponseEntity<?> layout(HttpServletRequest caller) { return state("get_scene", caller); }
@@ -43,9 +45,16 @@ public class SceneStateController {
             JsonNode result = mapper.readTree(response.body()).path("result");
             if (result.path("isError").asBoolean()) return ResponseEntity.status(503).build();
             for (JsonNode item : result.path("content")) {
-                if ("text".equals(item.path("type").asText()))
-                    return ResponseEntity.ok().cacheControl(CacheControl.noStore())
-                        .body(mapper.readTree(item.path("text").asText()));
+                if ("text".equals(item.path("type").asText())) {
+                    JsonNode body=mapper.readTree(item.path("text").asText());
+                    if (tool.equals("get_cargo") && body instanceof ObjectNode runtime) {
+                        PlcSnapshot plc=mes.plc();
+                        runtime.put("assemblyPhase",plc.assemblyPhase());
+                        runtime.put("packingPhase",plc.packingPhase());
+                        runtime.put("mesStop",plc.mesStop());
+                    }
+                    return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(body);
+                }
             }
         } catch (Exception unavailable) {
             return ResponseEntity.status(503).build();

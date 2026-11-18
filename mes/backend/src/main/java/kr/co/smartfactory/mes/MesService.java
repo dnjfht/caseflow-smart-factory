@@ -3,7 +3,6 @@ package kr.co.smartfactory.mes;
 import jakarta.annotation.PostConstruct;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -19,13 +18,15 @@ public class MesService {
     private final JdbcTemplate db;
     private final OpcUaGateway plc;
     private final LotService lots;
+    private final OipRunGateway oipRun;
     private final TransactionTemplate transactions;
     private volatile PlcSnapshot latest = PlcSnapshot.offline("아직 측정하지 않음");
 
-    public MesService(JdbcTemplate db, OpcUaGateway plc, LotService lots, TransactionTemplate transactions) {
+    public MesService(JdbcTemplate db, OpcUaGateway plc, LotService lots, OipRunGateway oipRun, TransactionTemplate transactions) {
         this.db = db;
         this.plc = plc;
         this.lots = lots;
+        this.oipRun = oipRun;
         this.transactions = transactions;
     }
 
@@ -75,6 +76,21 @@ public class MesService {
 
     private int inventoryQuantity(String sku) {
         return db.queryForObject("SELECT quantity FROM inventory WHERE sku=?", Integer.class, sku);
+    }
+
+    private PlcSnapshot cleanLine(PlcSnapshot current) throws Exception {
+        if (current.launched()==0 && current.rejected()==0 && current.packed()==0 && current.lineExit()==0) return current;
+        oipRun.resetLine();
+        plc.close();
+        for (int attempt=0;attempt<40;attempt++) {
+            Thread.sleep(150);
+            PlcSnapshot next=plc.sample();
+            if (next.connected() && next.launched()==0 && next.rejected()==0 && next.packed()==0 && next.lineExit()==0) {
+                latest=next;
+                return next;
+            }
+        }
+        throw new IllegalStateException("현장 수량 초기화 확인에 실패했습니다. 현장 연결 상태를 확인하세요.");
     }
 
     public PlcSnapshot plc() { return latest; }
@@ -155,12 +171,6 @@ public class MesService {
         Map<String,Object> plan = rows.getFirst();
         if (!"APPROVED".equals(plan.get("STATUS")))
             throw new ResponseStatusException(HttpStatus.CONFLICT,"승인된 계획만 작업지시로 발행할 수 있습니다.");
-        LocalDate plannedStart=((java.sql.Date)plan.get("PLANNED_START")).toLocalDate();
-        if (plannedStart.isAfter(LocalDate.now()))
-            throw new ResponseStatusException(HttpStatus.CONFLICT,"작업 시작 예정일이 아직 오지 않았습니다.");
-        if (plan.get("PLANNED_START_TIME") instanceof java.sql.Time plannedTime &&
-            LocalDateTime.of(plannedStart,plannedTime.toLocalTime()).isAfter(LocalDateTime.now()))
-            throw new ResponseStatusException(HttpStatus.CONFLICT,"작업 시작 예정 시각이 아직 오지 않았습니다.");
         String orderCode = "WO-" + plan.get("PLAN_CODE");
         Map<String,Object> order = create(orderCode,((Number)plan.get("TARGET_QTY")).intValue());
         db.update("INSERT INTO plan_order(plan_id,order_id) VALUES (?,?)",planId,order.get("ID"));
@@ -176,9 +186,7 @@ public class MesService {
         if (db.queryForObject("SELECT COUNT(*) FROM mes_order WHERE order_code=?",Integer.class,code) != 0) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,"작업번호가 이미 존재합니다.");
         }
-        if (db.queryForObject("SELECT COUNT(*) FROM mes_order WHERE status IN ('RUNNING','PAUSED')", Integer.class) != 0) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "현재 작업을 먼저 완료하세요.");
-        }
+        // Releasing an order only queues it. The single-active-order rule belongs to start.
         db.update("INSERT INTO mes_order(order_code,target_qty,status) VALUES (?,?,?)", code, target, "CREATED");
         long orderId=db.queryForObject("SELECT id FROM mes_order WHERE order_code=?",Long.class,code);
         db.update("INSERT INTO production_lot(lot_code,order_id,product_sku,target_qty) VALUES (?,?,'CASE',?)",
@@ -196,11 +204,11 @@ public class MesService {
             switch (action) {
                 case "start" -> {
                     if (!state.equals("CREATED")) throw new ResponseStatusException(HttpStatus.CONFLICT, "CREATED 작업만 시작할 수 있습니다.");
+                    if (db.queryForObject("SELECT COUNT(*) FROM mes_order WHERE status IN ('RUNNING','PAUSED')", Integer.class) != 0)
+                        throw new ResponseStatusException(HttpStatus.CONFLICT, "현재 가동 중인 작업을 완료하거나 정지한 후 시작하세요.");
                     if (!materialAvailable()) throw new ResponseStatusException(HttpStatus.CONFLICT,
                         "본체와 뚜껑 재고를 먼저 입고하세요.");
-                    if (s.launched() != 0 || s.rejected() != 0 || s.packed() != 0 || s.lineExit() != 0) {
-                        throw new ResponseStatusException(HttpStatus.CONFLICT, "OIP의 Stop→Play로 카운터를 0으로 재설정한 뒤 시작하세요.");
-                    }
+                    s=cleanLine(s);
                     plc.stop(true);
                     plc.target(((Number) order.get("TARGET_QTY")).intValue());
                     plc.materialPermit(true);
@@ -217,6 +225,23 @@ public class MesService {
                     if (!state.equals("PAUSED")) throw new ResponseStatusException(HttpStatus.CONFLICT, "PAUSED 작업만 재개할 수 있습니다.");
                     plc.stop(false);
                     db.update("UPDATE mes_order SET status='RUNNING' WHERE id=?", id);
+                }
+                case "recover" -> {
+                    if (!state.equals("NEEDS_RESET")) throw new ResponseStatusException(HttpStatus.CONFLICT, "수량 초기화가 감지된 작업만 복구할 수 있습니다.");
+                    if (db.queryForObject("SELECT COUNT(*) FROM mes_order WHERE status IN ('RUNNING','PAUSED')", Integer.class) != 0)
+                        throw new ResponseStatusException(HttpStatus.CONFLICT, "다른 작업이 진행 중입니다.");
+                    if (!materialAvailable()) throw new ResponseStatusException(HttpStatus.CONFLICT, "본체와 뚜껑 재고를 먼저 입고하세요.");
+                    s=cleanLine(s);
+                    int remaining = ((Number)order.get("TARGET_QTY")).intValue() - ((Number)order.get("LOADED_QTY")).intValue();
+                    if (remaining <= 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "남은 목표 양품 수량이 없습니다.");
+                    plc.stop(true);
+                    plc.target(remaining);
+                    plc.materialPermit(true);
+                    db.update("UPDATE mes_order SET run_base_launched=last_launched,run_base_rejected=last_rejected," +
+                        "run_base_packed=last_packed,run_base_exit=last_exit,status='RUNNING' WHERE id=?",id);
+                    db.update("UPDATE production_plan SET status='RUNNING' WHERE id IN (SELECT plan_id FROM plan_order WHERE order_id=?)",id);
+                    event(id,"PLC_COUNTER_RECOVERED",remaining);
+                    plc.stop(false);
                 }
                 default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 명령입니다.");
             }
@@ -248,21 +273,25 @@ public class MesService {
         int rejected = ((Number)o.get("LAST_REJECTED")).intValue();
         int packed = ((Number)o.get("LAST_PACKED")).intValue();
         int exited = ((Number)o.get("LAST_EXIT")).intValue();
-        if (s.launched()<launched || s.rejected()<rejected || s.packed()<packed || s.lineExit()<exited) {
+        int liveLaunched = ((Number)o.get("RUN_BASE_LAUNCHED")).intValue() + s.launched();
+        int liveRejected = ((Number)o.get("RUN_BASE_REJECTED")).intValue() + s.rejected();
+        int livePacked = ((Number)o.get("RUN_BASE_PACKED")).intValue() + s.packed();
+        int liveExit = ((Number)o.get("RUN_BASE_EXIT")).intValue() + s.lineExit();
+        if (liveLaunched<launched || liveRejected<rejected || livePacked<packed || liveExit<exited) {
             db.update("UPDATE mes_order SET status='NEEDS_RESET' WHERE id=?", id);
             event(id,"PLC_COUNTER_RESET",0);
             return;
         }
-        for (int n=launched+1;n<=s.launched();n++) {
+        for (int n=launched+1;n<=liveLaunched;n++) {
             lots.issue(id,n,"BODY"); lots.issue(id,n,"LID");
             stock("BODY",-1); stock("LID",-1); event(id,"MATERIAL_CONSUMED",n);
         }
-        for (int n=rejected+1;n<=s.rejected();n++) { stock("REJECT",1); event(id,"REJECTED",n); }
-        for (int n=packed+1;n<=s.packed();n++) { stock("FINISHED",1); event(id,"PACKED",n); }
-        for (int n=exited+1;n<=s.lineExit();n++) {
+        for (int n=rejected+1;n<=liveRejected;n++) { stock("REJECT",1); event(id,"REJECTED",n); }
+        for (int n=packed+1;n<=livePacked;n++) { stock("FINISHED",1); event(id,"PACKED",n); }
+        for (int n=exited+1;n<=liveExit;n++) {
             stock("FINISHED",-1); stock("TRUCK",1); event(id,"LOADED_DIGITAL",n);
         }
-        int loaded = ((Number)o.get("LOADED_QTY")).intValue() + s.lineExit() - exited;
+        int loaded = ((Number)o.get("LOADED_QTY")).intValue() + liveExit - exited;
         int dispatched = ((Number)o.get("DISPATCHED_QTY")).intValue();
         int target = ((Number)o.get("TARGET_QTY")).intValue();
         String state = (String)o.get("STATUS");
@@ -280,8 +309,8 @@ public class MesService {
             dispatched=target; loaded-=target; state="COMPLETE";
         }
         db.update("UPDATE mes_order SET last_launched=?,last_rejected=?,last_packed=?,last_exit=?,loaded_qty=?,dispatched_qty=?,status=? WHERE id=?",
-            s.launched(),s.rejected(),s.packed(),s.lineExit(),loaded,dispatched,state,id);
+            liveLaunched,liveRejected,livePacked,liveExit,loaded,dispatched,state,id);
         db.update("UPDATE production_lot SET launched_qty=?,good_qty=?,rejected_qty=?,shipped_qty=?,status=? WHERE order_id=?",
-            s.launched(),s.packed(),s.rejected(),s.lineExit(),state,id);
+            liveLaunched,livePacked,liveRejected,liveExit,state,id);
     }
 }
