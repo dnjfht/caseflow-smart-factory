@@ -7,31 +7,32 @@
 | 폴더 | 내용 |
 |---|---|
 | `oip/project` | OIP 현장 배치, 센서·출력 배선, IEC 61131-3 Structured Text 제어 프로그램과 공정 시험 |
-| `plc/openplc-editor` | 수정한 OpenPLC Editor 래더 프로젝트(`main.ld`), 장치 설정, I/O 배선 이미지 |
+| `plc/openplc-editor` | 수정한 OpenPLC Editor 래더 프로젝트(`main.ld`)와 장치 설정 |
 | `mes/backend` | Spring Boot API, OPC UA 수집, 작업지시·BOM·LOT·자재·품질·출고 이력 |
 | `mes/web` | React MES 화면과 OIP 위치 데이터를 따르는 Three.js 3D 현장 뷰 |
 | `indy` | ROS 2 Indy7 관절 동작, Gazebo 실행 스크립트, 검증된 공식 소스 버전, 제어기 완료 신호 브리지 |
 | `oip/background-runtime.patch` | OIP 최소화 시 시뮬레이션 일시 정지를 해제하는 데스크톱 패치 |
+| `images` | 포트폴리오에 필요한 현장 전경 1장과 PLC 입출력 배선도 5장 |
+| `scripts/start-local.ps1` | 로컬 OIP 기동·Play·MES 실행을 순서대로 처리 |
 | `docs` | 진행 보고서와 다음 작업 인계서, 사용한 OIP MIT 라이선스 |
 
 ## 현장과 화면의 관계
 
-OIP 실행기의 PLC와 물리 시뮬레이션이 제어 상태의 단일 기준입니다. MES는 OPC UA로 작업 상태와 생산 수량을 받고, 로컬 에이전트에서 설비 배치와 이동 중 제품의 위치를 받아 3D 뷰에 표시합니다. MES의 3D 뷰는 회전·확대·설비 선택이 가능하며 설비 형상은 경량 시각화입니다. OIP 원본 화면 자체를 웹에서 다시 실행하지 않으므로 별도 시뮬레이션의 상태 불일치는 없습니다.
+OIP 실행기의 PLC와 물리 시뮬레이션이 제어 상태의 단일 기준입니다. MES는 OPC UA로 설비 상태와 생산 수량을 받고, 로컬 에이전트에서 이동 중 제품의 위치를 받아 브라우저의 경량 Three.js 현장에 표시합니다. 정지 실린더, 불량 분기, 검사등과 제품 이동은 현장 신호를 따릅니다. 작은 화면에서는 렌더링 해상도와 갱신 횟수를 낮춥니다. 공개 웹의 애니메이션은 **예시 재생**이며 실제 PLC 상태가 아닙니다.
 
 ## 로컬 실행
 
-1. OIP 데스크톱에서 `oip/project`를 열고 Play 및 OPC UA 서버(`4843`)를 켭니다. OIP 로컬 에이전트(`5189`)도 켭니다. 최소화 중 계속 실행하려면 `oip/background-runtime.patch`를 적용한 실행본이 필요합니다.
-2. `mes/backend`에서 Java 25를 사용해 `./mvnw spring-boot:run`을 실행합니다. 기본 DB는 로컬 H2 파일입니다.
-3. `mes/web`에서 `npm ci && npm run dev`를 실행하고 `http://127.0.0.1:5173`을 엽니다.
-4. Indy7을 연동할 때는 `indy/README.md`의 ROS 2 Jazzy·Gazebo 절차를 따릅니다.
+1. Java 25, Node.js, `oip/background-runtime.patch`가 적용된 OIP 실행본을 준비하고, `oip/project`를 OIP에서 한 번 열어 신뢰한 프로젝트로 등록합니다.
+2. Windows PowerShell에서 `powershell -ExecutionPolicy Bypass -File scripts/start-local.ps1`을 실행합니다. 스크립트가 OIP를 최소화하여 시작하고 프로젝트·Play·OPC UA를 확인한 다음 MES 서버와 웹을 시작합니다. 기본 DB는 로컬 H2 파일이며 웹 주소는 `http://127.0.0.1:5173`입니다. 실행본이 다른 위치에 있으면 `-OipExe`로 지정합니다.
+3. Indy7을 연동할 때는 `indy/README.md`의 ROS 2 Jazzy·Gazebo 절차를 따릅니다. 기본 OIP 로봇은 Gazebo 없이도 별도 동작합니다.
 
 작업지시 발행은 다른 작업이 가동 중이어도 가능합니다. 동시에 가동하는 작업은 한 건으로 제한됩니다. 새 작업 시작 시 MES가 OIP 운전을 초기화하고 이전 작업 실적은 DB에 보존합니다. 중단된 장기 작업은 `재개`로 이미 완료한 양품을 유지한 채 남은 수량을 생산합니다. OIP 화면이 멈춘 상태로 보이면 현장 시간 감시기가 자동 재개를 시도합니다.
 
-이 컴퓨터에서는 `scripts/start-local.ps1`로 OIP, MES 서버, 웹 화면을 차례로 시작할 수 있습니다. 처음 실행하기 전에는 Java 25와 Node.js를 설치하고 OIP 프로젝트를 한 번 열어 저장해야 합니다. 패치 실행본이 없으면 `-OipExe` 또는 `CASEFLOW_OIP_EXE`로 경로를 지정합니다. 설치된 원본 OIP가 이미 실행 중이면 스크립트가 경고하며 작업 중인 실행기를 교체하지 않습니다. 배포된 웹만으로 로컬 OIP 실행기를 대신할 수는 없습니다.
+OIP 시작 인자에 프로젝트 경로를 넘기면 수동 확인 창이 뜨므로 스크립트는 먼저 OIP를 시작한 뒤 로컬 제어 연결로 등록된 프로젝트를 엽니다. 다른 프로젝트가 이미 열려 있으면 자동으로 바꾸지 않습니다. 기존 OIP가 실행 중인데 로컬 제어 연결이 꺼져 있으면 안내와 함께 중지합니다. 배포된 웹만으로 로컬 OIP 실행기를 대신할 수는 없습니다.
 
 ## 공개 배포와 로컬 현장
 
-Render의 공개 웹은 저장된 익명 예시 데이터와 3D 설비 배치를 보여주는 **읽기 전용 미리보기**입니다. 계획·입고·로봇·생산 버튼은 공정을 제어하지 않습니다. 공개 인터넷에서 인증 없이 현장 제어 명령을 받지 않도록 서버와 OPC UA는 이 PC에만 둡니다. 로컬에서는 `scripts/start-local.ps1`가 OIP와 MES를 함께 시작하지만, 컴퓨터가 꺼지면 공정도 중단됩니다. Gazebo를 사용한 INDY7 연동은 ROS 2·Gazebo·릴레이·브리지 프로세스를 별도로 실행해야 합니다. 향후 원격에서 실제 현장을 제어하려면 인증, 영속 DB, 현장 PC 상주 에이전트와 안전한 연결을 추가해야 합니다.
+Render의 [공개 웹](https://caseflow-smart-factory.onrender.com)은 저장된 익명 예시 데이터와 3D 공정 재생을 보여주는 **읽기 전용 미리보기**입니다. 계획·입고·로봇·생산 버튼은 공정을 제어하지 않습니다. 공개 인터넷에서 인증 없이 현장 제어 명령을 받지 않도록 서버와 OPC UA는 이 PC에만 둡니다. 로컬에서는 `scripts/start-local.ps1`가 OIP와 MES를 함께 시작하지만, 컴퓨터가 꺼지면 공정도 중단됩니다. Gazebo를 사용한 INDY7 연동은 ROS 2·Gazebo·릴레이·브리지 프로세스를 별도로 실행해야 합니다. 향후 원격에서 실제 현장을 제어하려면 인증, 영속 DB, 현장 PC 상주 에이전트와 안전한 연결을 추가해야 합니다.
 
 OpenPLC Editor의 `main.ld`는 편집 가능한 래더 프로젝트이며, 실제 최종 OIP 공정 실행은 `oip/project/plc/program.st`와 OIP 장면/배선을 사용합니다. 두 소스를 혼동하지 않도록 구분해 보관합니다. Gazebo 공식 Indy7 패키지는 용량과 독립 라이선스 때문에 복제하지 않고 `indy/UPSTREAM.txt`에 검증된 Git 커밋을 고정했습니다.
 

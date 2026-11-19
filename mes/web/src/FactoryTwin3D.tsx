@@ -6,7 +6,7 @@ import './FactoryTwin3D.css'
 type Part = { id:string; name:string; package:string; position:[number,number,number]; rotationY:number }
 type Cargo = { id:number; product:string; position:[number,number,number]; size:[number,number,number]; color:string; yawDeg:number }
 type Layout = { running:boolean; parts:Part[] }
-type Runtime = { running:boolean; simTime:number; count:number; cargo:Cargo[]; assemblyPhase?:number; packingPhase?:number; mesStop?:boolean }
+type Runtime = { running:boolean; preview?:boolean; simTime:number; count:number; cargo:Cargo[]; assemblyPhase?:number; inspectionPhase?:number; packingPhase?:number; rejected?:number; packed?:number; motorRunning?:boolean; bodyStopper?:boolean; lidStopper?:boolean; rejectDiverter?:boolean; mesStop?:boolean }
 
 const names:Record<string,string>={
   'oip.belt-conveyor':'이송 컨베이어','oip.six-axis-robot':'조립 로봇',
@@ -37,10 +37,13 @@ export default function FactoryTwin3D(){
     const element=host.current;if(!element)return
     const scene=new THREE.Scene();scene.background=new THREE.Color('#ccd9d8');scene.fog=new THREE.Fog('#ccd9d8',42,85)
     const camera=new THREE.PerspectiveCamera(48,1,.1,150);camera.position.set(13,15,24)
+    const compact=window.matchMedia('(max-width:700px)').matches
+    const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if(compact)camera.position.set(11,11,19)
     let renderer:THREE.WebGLRenderer
-    try{renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'})}
+    try{renderer=new THREE.WebGLRenderer({antialias:!compact,powerPreference:compact?'low-power':'high-performance'})}
     catch{setRenderError(true);setStatus('3D 가속 재시작 필요');return}
-    renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.shadowMap.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace
+    renderer.setPixelRatio(Math.min(devicePixelRatio,compact?1:1.35));renderer.shadowMap.enabled=!compact;renderer.outputColorSpace=THREE.SRGBColorSpace
     element.appendChild(renderer.domElement)
     const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(11,0,0);controls.enableDamping=true;controls.maxDistance=65;controls.minDistance=3;controls.maxPolarAngle=Math.PI/2.02;controls.update()
     scene.add(new THREE.HemisphereLight('#ffffff','#8fa5a5',2.0))
@@ -53,8 +56,13 @@ export default function FactoryTwin3D(){
     const partMeshes:THREE.Object3D[]=[]
     const robotArms:THREE.Group[]=[]
     const robotWrists:THREE.Group[]=[]
+    const stopBlades:Array<{id:string;blade:THREE.Group}>=[]
+    const diverterArms:THREE.Group[]=[]
+    const inspectionLamps:THREE.MeshStandardMaterial[]=[]
+    const sensorIndicators:Array<{material:THREE.MeshStandardMaterial;stage:number}>=[]
     const packingHeads:THREE.Group[]=[]
-    let assemblyPhase=0,packingPhase=0,stopped=true
+    let assemblyPhase=0,inspectionPhase=0,packingPhase=0,stopped=true
+    let bodyStopper=false,lidStopper=false,rejectDiverter=false
     const box=(parent:THREE.Object3D,size:[number,number,number],color:string,x=0,y=0,z=0)=>{
       const mesh=new THREE.Mesh(new THREE.BoxGeometry(...size),new THREE.MeshStandardMaterial({color,roughness:.68,metalness:.12}));mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh
     }
@@ -148,11 +156,25 @@ export default function FactoryTwin3D(){
           }
           partMeshes.push(...group.children)
         }else if(part.package==='oip.diffuse-sensor'){
-          box(group,[.035,.6,.035],'#637d7c',0,-.3,0);box(group,[.13,.17,.15],'#356c72');box(group,[.025,.06,.06],'#7cdab0',.08,.02,0)
+          box(group,[.035,.6,.035],'#637d7c',0,-.3,0);box(group,[.13,.17,.15],'#356c72')
+          const indicator=new THREE.MeshStandardMaterial({color:'#408b79',emissive:'#173d34',emissiveIntensity:.4})
+          const diode=new THREE.Mesh(new THREE.BoxGeometry(.025,.06,.06),indicator);diode.position.set(.08,.02,0);group.add(diode)
+          sensorIndicators.push({material:indicator,stage:part.position[0]<6?0:part.position[0]<12?1:2})
           box(group,[.28,.035,.28],'#304a51',0,-.59,0)
           partMeshes.push(...group.children)
         }else if(part.package==='oip.diverter'||part.package==='oip.blade-stop'){
-          box(group,[.4,.22,.5],'#c57b55');partMeshes.push(...group.children)
+          box(group,[.46,.22,.52],'#526c74',0,-.12,0)
+          box(group,[.33,.11,.4],'#d89354',0,.05,0)
+          const blade=new THREE.Group();group.add(blade)
+          if(part.package==='oip.diverter'){
+            box(blade,[.72,.07,.13],'#dfad67',.27,.17,0)
+            box(group,[.18,.22,.2],'#344d58',-.1,.08,0)
+            diverterArms.push(blade)
+          }else{
+            box(blade,[.1,.32,.54],'#d8a15a',0,.16,0)
+            stopBlades.push({id:part.id,blade})
+          }
+          partMeshes.push(...group.children,...blade.children)
         }else if(part.package==='factory.case-cell'){
           const station=part.position[0]<6?'조립':part.position[0]<12?'검사':'포장'
           const marker=labelSprite(station);marker.position.set(0,1.7,0);group.add(marker)
@@ -167,7 +189,8 @@ export default function FactoryTwin3D(){
           }else if(station==='검사'){
             box(group,[.28,.28,.32],'#456579',0,1.47,-.62)
             const lens=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.13,16),new THREE.MeshStandardMaterial({color:'#182f39',metalness:.5,roughness:.25}));lens.rotation.x=Math.PI/2;lens.position.set(0,1.4,-.38);group.add(lens)
-            box(group,[1.1,.035,.05],'#d8edea',0,1.49,-.58)
+            const lamp=box(group,[1.1,.035,.05],'#d8edea',0,1.49,-.58)
+            inspectionLamps.push(lamp.material as THREE.MeshStandardMaterial)
           }else{
             box(group,[.6,.22,.4],'#617f87',-.85,.22,-.45)
             box(group,[.16,.08,.14],'#d95042',-.85,.39,-.37)
@@ -176,7 +199,10 @@ export default function FactoryTwin3D(){
       }
       setStatus(layout.running?'실시간 연결':'현장 대기')
     }).catch(()=>{if(!disposed)setStatus('현장 연결 대기')})
+    let inFlight=false
     const update=async()=>{
+      if(inFlight)return
+      inFlight=true
       try{
         const response=await fetch('/api/scene/runtime',{cache:'no-store'});if(!response.ok)throw Error()
         const state=await response.json() as Runtime;if(disposed)return
@@ -192,12 +218,14 @@ export default function FactoryTwin3D(){
         for(const [id,value] of cargoMeshes)if(!value.seen){dynamicGroup.remove(value.mesh);value.mesh.geometry.dispose();(value.mesh.material as THREE.Material).dispose();cargoMeshes.delete(id)}
         setTime(Number.isFinite(state.simTime)?state.simTime:0)
         setCount(Number.isFinite(state.count)?state.count:0)
-        setStatus(state.running?'실시간 연결':'현장 대기')
-        assemblyPhase=state.assemblyPhase??0;packingPhase=state.packingPhase??0;stopped=state.mesStop??true
-        setActivity(stopped?'현장 정지':assemblyPhase===1?'로봇 조립 중':assemblyPhase===2?'조립품 배출 중':packingPhase===1?'포장 중':packingPhase===2?'포장품 배출 중':'설비 대기')
+        setStatus(state.preview?'예시 공정 재생':state.running?'실시간 연결':'현장 대기')
+        assemblyPhase=state.assemblyPhase??0;inspectionPhase=state.inspectionPhase??0;packingPhase=state.packingPhase??0;stopped=state.mesStop??true
+        bodyStopper=state.bodyStopper??false;lidStopper=state.lidStopper??false;rejectDiverter=state.rejectDiverter??false
+        setActivity(stopped?'현장 정지':assemblyPhase===1?'로봇 조립 중':packingPhase===1?'양품 포장 중':inspectionPhase===1?'품질 검사 중':rejectDiverter?'불량 분류 중':assemblyPhase===2?'조립품 배출 중':packingPhase===2?'포장품 배출 중':'이송·부품 공급 중')
       }catch{if(!disposed)setStatus('현장 연결 대기')}
+      finally{inFlight=false}
     }
-    void update();const poll=window.setInterval(update,350)
+    void update();const poll=window.setInterval(update,compact?700:450)
     const raycaster=new THREE.Raycaster();const pointer=new THREE.Vector2()
     const click=(event:MouseEvent)=>{
       const bounds=renderer.domElement.getBoundingClientRect();pointer.set((event.clientX-bounds.left)/bounds.width*2-1,-(event.clientY-bounds.top)/bounds.height*2+1)
@@ -206,14 +234,20 @@ export default function FactoryTwin3D(){
       setSelected((object?.userData.part as Part)||null)
     }
     renderer.domElement.addEventListener('click',click)
-    let frame=0
-    const draw=()=>{controls.update();for(const value of cargoMeshes.values())value.mesh.position.lerp(value.target,.28)
-      const t=performance.now()*.001
+    let frame=0,lastFrame=0
+    const draw=(now:number)=>{frame=requestAnimationFrame(draw)
+      if(now-lastFrame<(reducedMotion?100:compact?42:30))return
+      lastFrame=now;controls.update();for(const value of cargoMeshes.values())value.mesh.position.lerp(value.target,.38)
+      const t=now*.001
       for(const arm of robotArms){const active=!stopped&&assemblyPhase>0;arm.rotation.y=THREE.MathUtils.lerp(arm.rotation.y,active?Math.sin(t*3)*.55:0,.1);arm.rotation.z=THREE.MathUtils.lerp(arm.rotation.z,active?Math.sin(t*3+1)*.13:0,.1)}
       for(const wrist of robotWrists)wrist.rotation.z=THREE.MathUtils.lerp(wrist.rotation.z,!stopped&&assemblyPhase>0?Math.sin(t*4+.7)*.38:0,.12)
       for(const head of packingHeads)head.position.y=THREE.MathUtils.lerp(head.position.y,!stopped&&packingPhase===1?1.12:1.5,.1)
-      renderer.render(scene,camera);frame=requestAnimationFrame(draw)};draw()
+      for(const {id,blade} of stopBlades){const extended=!stopped&&(id.toLowerCase().includes('body')?bodyStopper:lidStopper);blade.position.y=THREE.MathUtils.lerp(blade.position.y,extended ? .17 : -.12,.2)}
+      for(const blade of diverterArms)blade.rotation.y=THREE.MathUtils.lerp(blade.rotation.y,!stopped&&rejectDiverter?-.6:0,.2)
+      for(const material of inspectionLamps){material.emissive.set(inspectionPhase===1&&!stopped?'#a9f4df':'#152b31');material.emissiveIntensity=inspectionPhase===1&&!stopped?1.2:.15}
+      for(const {material,stage} of sensorIndicators){const active=!stopped&&[assemblyPhase,inspectionPhase,packingPhase][stage]===1;material.emissive.set(active?'#8bffd5':'#173d34');material.emissiveIntensity=active?1:.35}
+      renderer.render(scene,camera)};frame=requestAnimationFrame(draw)
     return()=>{disposed=true;clearInterval(poll);cancelAnimationFrame(frame);observer.disconnect();renderer.domElement.removeEventListener('click',click);controls.dispose();scene.traverse(object=>{if(object instanceof THREE.Mesh){object.geometry.dispose();const materials=Array.isArray(object.material)?object.material:[object.material];materials.forEach(material=>material.dispose())}});renderer.dispose();element.removeChild(renderer.domElement)}
   },[])
-  return <div className="factory-twin-wrap"><div className="factory-twin-canvas" ref={host}>{renderError&&<div className="factory-twin-fallback"><img src="/assets/factory/factory-preview.jpg" alt="현장 설비 미리보기"/><p>브라우저의 3D 가속이 중지됐습니다. 브라우저를 다시 실행하면 실시간 3D 화면을 볼 수 있습니다.</p></div>}</div><div className="factory-twin-bar"><span className={status==='실시간 연결'?'ok':''}>● {status}</span><span>{activity}</span><span>현장 시간 {time.toFixed(1)}초</span><span>이송 중 제품 {count}개</span><span>드래그 회전 · 휠 확대 · 우클릭 이동</span></div>{selected&&<div className="factory-twin-selected"><strong>{selected.name||names[selected.package]||'설비'}</strong><span>{names[selected.package]||'공정 설비'} · 위치 {selected.position.map(v=>v.toFixed(1)).join(', ')} m</span><button onClick={()=>setSelected(null)}>닫기</button></div>}</div>
+  return <div className="factory-twin-wrap"><div className="factory-twin-canvas" ref={host}>{renderError&&<div className="factory-twin-fallback"><p>브라우저의 3D 가속이 중지됐습니다. 브라우저를 다시 실행하면 현장 화면을 볼 수 있습니다.</p></div>}</div><div className="factory-twin-bar"><span className={status==='실시간 연결'?'ok':''}>● {status}</span><span>{activity}</span><span>현장 시간 {time.toFixed(1)}초</span><span>이송 중 제품 {count}개</span><span>드래그 회전 · 휠 확대 · 우클릭 이동</span></div>{selected&&<div className="factory-twin-selected"><strong>{selected.name||names[selected.package]||'설비'}</strong><span>{names[selected.package]||'공정 설비'} · 위치 {selected.position.map(v=>v.toFixed(1)).join(', ')} m</span><button onClick={()=>setSelected(null)}>닫기</button></div>}</div>
 }

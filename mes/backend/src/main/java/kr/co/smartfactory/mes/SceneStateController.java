@@ -50,7 +50,14 @@ public class SceneStateController {
                     if (tool.equals("get_cargo") && body instanceof ObjectNode runtime) {
                         PlcSnapshot plc=mes.plc();
                         runtime.put("assemblyPhase",plc.assemblyPhase());
+                        runtime.put("inspectionPhase",plc.inspectionPhase());
                         runtime.put("packingPhase",plc.packingPhase());
+                        runtime.put("rejected",plc.rejected());
+                        runtime.put("packed",plc.packed());
+                        runtime.put("motorRunning",plc.motorRunning());
+                        runtime.put("bodyStopper",plc.bodyStopper());
+                        runtime.put("lidStopper",plc.lidStopper());
+                        runtime.put("rejectDiverter",plc.rejectDiverter());
                         runtime.put("mesStop",plc.mesStop());
                     }
                     return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(body);

@@ -1,3 +1,5 @@
+import { previewScene } from './demoScene'
+
 // Public hosting serves a fixed, anonymized preview. Local builds keep the real API.
 if (import.meta.env.VITE_STATIC_DEMO === '1') {
   document.body.dataset.demo = 'true'
@@ -15,7 +17,7 @@ if (import.meta.env.VITE_STATIC_DEMO === '1') {
     }
     if (url === '/api/overview') return preview('overview').then(json)
     if (url === '/api/scene/layout') return preview('layout').then(json)
-    if (url === '/api/scene/runtime') return Promise.resolve(json({ running: false, simTime: 0, count: 0, cargo: [], mesStop: true }))
+    if (url === '/api/scene/runtime') return Promise.resolve(json(previewScene()))
     if (url === '/api/robot/status') return Promise.resolve(json({ RECIPE: 'ASSEMBLY_DEMO', SPEED_PCT: 100, ENABLED: false, STATE: 'OFFLINE', DETAIL: '공개 화면은 현장 로봇에 연결되지 않습니다.', COMPLETED_CYCLES: 0, PLC_CONNECTED: false, ACTION_AVAILABLE: false, BRIDGE_ALIVE: false, BRIDGE_UPDATED_AT: '' }))
     if (url === '/api/robot/program' || url.startsWith('/api/trace/')) return Promise.resolve(json([]))
     if (url === '/api/ai/status') return Promise.resolve(json({ modelState: 'UNTRAINED', sampleCount: 0, lastSample: '', qualityLabels: '', maintenanceLabels: '', sensorInputs: '' }))

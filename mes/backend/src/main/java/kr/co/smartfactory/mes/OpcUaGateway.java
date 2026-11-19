@@ -49,7 +49,9 @@ public class OpcUaGateway {
                 number("TargetQuantity"), number("LaunchedCount"), number("RejectCount"),
                 number("ProducedCount"), number("ShippedCount"), number("MachineState"),
                 number("AssemblyPhase"), number("InspectionPhase"), number("PackingPhase"),
-                (Boolean) read("MesStop"), (Boolean) read("BodyConveyorRun"));
+                (Boolean) read("MesStop"), (Boolean) read("BodyConveyorRun"),
+                (Boolean) read("BodyStopper"), (Boolean) read("LidStopper"),
+                (Boolean) read("RejectDiverter"));
         } catch (Exception e) {
             resetClient();
             return PlcSnapshot.offline(e.getClass().getSimpleName() + ": " + e.getMessage());
