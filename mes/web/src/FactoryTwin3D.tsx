@@ -35,38 +35,51 @@ export default function FactoryTwin3D(){
   const [renderError,setRenderError]=useState(false)
   useEffect(()=>{
     const element=host.current;if(!element)return
-    const scene=new THREE.Scene();scene.background=new THREE.Color('#dbe6e5');scene.fog=new THREE.Fog('#dbe6e5',38,78)
-    const camera=new THREE.PerspectiveCamera(48,1,.1,150);camera.position.set(13,20,29)
+    const scene=new THREE.Scene();scene.background=new THREE.Color('#ccd9d8');scene.fog=new THREE.Fog('#ccd9d8',42,85)
+    const camera=new THREE.PerspectiveCamera(48,1,.1,150);camera.position.set(13,15,24)
     let renderer:THREE.WebGLRenderer
     try{renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'})}
     catch{setRenderError(true);setStatus('3D 가속 재시작 필요');return}
     renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.shadowMap.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace
     element.appendChild(renderer.domElement)
     const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(11,0,0);controls.enableDamping=true;controls.maxDistance=65;controls.minDistance=3;controls.maxPolarAngle=Math.PI/2.02;controls.update()
-    scene.add(new THREE.HemisphereLight('#ffffff','#a0b8ad',2.2))
-    const sun=new THREE.DirectionalLight('#ffffff',2.3);sun.position.set(8,20,12);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-34;sun.shadow.camera.right=34;sun.shadow.camera.top=22;sun.shadow.camera.bottom=-22;scene.add(sun)
-    const ground=new THREE.Mesh(new THREE.PlaneGeometry(72,24),new THREE.MeshStandardMaterial({color:'#c4ccc9',roughness:.94}));ground.rotation.x=-Math.PI/2;ground.position.set(11,-.06,0);ground.receiveShadow=true;scene.add(ground)
-    const grid=new THREE.GridHelper(72,72,'#9caeaa','#b8c5c1');grid.position.set(11,-.04,0);scene.add(grid)
+    scene.add(new THREE.HemisphereLight('#ffffff','#8fa5a5',2.0))
+    const sun=new THREE.DirectionalLight('#fff8e8',2.4);sun.position.set(8,20,12);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-34;sun.shadow.camera.right=34;sun.shadow.camera.top=22;sun.shadow.camera.bottom=-22;scene.add(sun)
+    const ground=new THREE.Mesh(new THREE.PlaneGeometry(72,24),new THREE.MeshStandardMaterial({color:'#b8c7c5',roughness:.92}));ground.rotation.x=-Math.PI/2;ground.position.set(11,-.06,0);ground.receiveShadow=true;scene.add(ground)
+    const grid=new THREE.GridHelper(72,72,'#a4b4b1','#bac8c4');grid.position.set(11,-.04,0);scene.add(grid)
     const staticGroup=new THREE.Group();scene.add(staticGroup)
     const dynamicGroup=new THREE.Group();scene.add(dynamicGroup)
     const cargoMeshes=new Map<number,{mesh:THREE.Mesh;target:THREE.Vector3;seen:boolean}>()
     const partMeshes:THREE.Object3D[]=[]
     const robotArms:THREE.Group[]=[]
+    const robotWrists:THREE.Group[]=[]
     const packingHeads:THREE.Group[]=[]
     let assemblyPhase=0,packingPhase=0,stopped=true
     const box=(parent:THREE.Object3D,size:[number,number,number],color:string,x=0,y=0,z=0)=>{
       const mesh=new THREE.Mesh(new THREE.BoxGeometry(...size),new THREE.MeshStandardMaterial({color,roughness:.68,metalness:.12}));mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh
     }
     // Architectural pieces are display-only; every moving product still follows OIP coordinates.
-    box(scene,[31,.025,.055],'#eab94d',11,-.018,-2.0)
-    box(scene,[31,.025,.055],'#eab94d',11,-.018,3.4)
+    box(scene,[31,.025,.055],'#e5ad3b',11,-.018,-2.0)
+    box(scene,[31,.025,.055],'#e5ad3b',11,-.018,3.4)
+    for(let x=-3;x<29;x+=2){
+      box(scene,[.6,.027,.06],'#e8b84e',x,-.016,-1.98)
+      box(scene,[.6,.027,.06],'#e8b84e',x,-.016,3.38)
+    }
     for(let x=-4;x<30;x+=4){
       box(scene,[.12,4.5,.12],'#6f8588',x,2.2,-6.2)
       box(scene,[.09,.09,10],'#87999a',x,4.45,-1.2)
-      box(scene,[1.6,.035,.035],'#e9f6eb',x,4.34,-2)
+      box(scene,[1.6,.035,.035],'#effcf8',x,4.34,-2)
+      box(scene,[1.6,.07,.5],'#e8f5f0',x,4.38,-2)
     }
     box(scene,[35,3.2,.08],'#bdc9c4',11,2.75,-6.35)
     for(let x=-3;x<29;x+=3.5)box(scene,[2.8,1.35,.06],'#79a3a6',x,2.6,-6.27)
+    for(const z of [-3.6,4.35]){
+      for(let x=-3;x<29;x+=2.5){
+        box(scene,[.055,1.35,.055],'#5f777a',x,.67,z)
+        box(scene,[2.5,.06,.06],'#617e7e',x+1.25,1.29,z)
+        box(scene,[2.5,.035,.035],'#708987',x+1.25,.48,z)
+      }
+    }
     const resize=()=>{const width=Math.max(1,Math.min(element.clientWidth,2400)),height=Math.max(1,element.clientHeight);camera.aspect=width/height;camera.updateProjectionMatrix();renderer.setSize(width,height,false)}
     const observer=new ResizeObserver(resize);observer.observe(element);resize()
     let disposed=false
@@ -81,10 +94,14 @@ export default function FactoryTwin3D(){
           box(group,[length,.035,.53],branch?'#b67a59':'#477d83',0,.07,0)
           box(group,[length,.1,.045],'#a7b6b7',0,.14,-.34)
           box(group,[length,.1,.045],'#a7b6b7',0,.14,.34)
+          box(group,[length-.18,.025,.08],'#223e49',0,.16,-.31)
+          box(group,[length-.18,.025,.08],'#223e49',0,.16,.31)
           for(let x=-length/2+.25;x<length/2;x+=.45){
             const roller=new THREE.Mesh(new THREE.CylinderGeometry(.055,.055,.58,10),new THREE.MeshStandardMaterial({color:'#bac9c9',metalness:.4,roughness:.35}));roller.rotation.x=Math.PI/2;roller.position.set(x,.087,0);group.add(roller)
           }
           for(const sign of [-1,1])for(const end of [-1,1])box(group,[.07,.76,.07],'#748e8e',end*(length/2-.2),-.48,sign*.26)
+          box(group,[.42,.34,.38],'#5e7a80',length/2-.32,-.27,.53)
+          box(group,[.34,.1,.28],'#364f58',length/2-.32,-.02,.53)
           partMeshes.push(...group.children)
         }else if(part.package==='oip.six-axis-robot'){
           const body=new THREE.MeshStandardMaterial({color:'#e8eeec',roughness:.36,metalness:.15})
@@ -105,13 +122,19 @@ export default function FactoryTwin3D(){
           pivot(arm,.22,.46,.62,0)
           cylinder(arm,.145,.64,.72,.84,0,-.82)
           pivot(arm,.17,.96,1.06,0)
-          cylinder(arm,.105,.31,1.04,.86,0,.42)
-          box(arm,[.12,.34,.15],'#486777',1.08,.63,0)
-          for(const x of [-.08,.08])box(arm,[.045,.22,.045],'#344d55',1.08+x,.42,0)
-          partMeshes.push(...group.children,...arm.children)
+          const wrist=new THREE.Group();wrist.position.set(.96,1.06,0);arm.add(wrist);robotWrists.push(wrist)
+          cylinder(wrist,.105,.31,.08,-.2,0,.42)
+          box(wrist,[.19,.18,.19],'#486777',.12,-.4,0)
+          for(const x of [-.1,.1])box(wrist,[.045,.22,.045],'#344d55',.12+x,-.56,0)
+          const cable=new THREE.Mesh(new THREE.TorusGeometry(.28,.025,6,18,Math.PI),new THREE.MeshStandardMaterial({color:'#2a434d',roughness:.9}));cable.rotation.z=Math.PI/2;cable.position.set(.49,.63,-.2);arm.add(cable)
+          for(const x of [-.32,.32])for(const z of [-.32,.32])box(group,[.07,.03,.07],'#d8ad58',x,.16,z)
+          partMeshes.push(...group.children,...arm.children,...wrist.children)
         }else if(part.package==='oip.box-spawner'){
           box(group,[.7,.15,.65],'#364f55',0,.55,0);box(group,[.09,.9,.09],'#738d89',-.3,.1,-.27);box(group,[.09,.9,.09],'#738d89',.3,.1,.27)
-          box(group,[.48,.32,.42],'#d7aa62',0,.37,0);partMeshes.push(...group.children)
+          box(group,[.48,.32,.42],'#d7aa62',0,.37,0)
+          box(group,[.6,.07,.53],'#af7c49',0,.59,0)
+          box(group,[.17,.22,.08],'#4f7882',.35,.35,.25)
+          partMeshes.push(...group.children)
         }else if(part.package==='factory.stock-display'){
           for(const shelf of [.25,.9,1.55])box(group,[1.8,.08,1.1],'#657985',0,shelf,0)
           for(const x of [-.82,.82])for(const z of [-.48,.48])box(group,[.09,1.8,.09],'#455b60',x,.9,z)
@@ -125,7 +148,9 @@ export default function FactoryTwin3D(){
           }
           partMeshes.push(...group.children)
         }else if(part.package==='oip.diffuse-sensor'){
-          box(group,[.035,.6,.035],'#637d7c',0,-.3,0);box(group,[.13,.17,.15],'#356c72');box(group,[.025,.06,.06],'#7cdab0',.08,.02,0);partMeshes.push(...group.children)
+          box(group,[.035,.6,.035],'#637d7c',0,-.3,0);box(group,[.13,.17,.15],'#356c72');box(group,[.025,.06,.06],'#7cdab0',.08,.02,0)
+          box(group,[.28,.035,.28],'#304a51',0,-.59,0)
+          partMeshes.push(...group.children)
         }else if(part.package==='oip.diverter'||part.package==='oip.blade-stop'){
           box(group,[.4,.22,.5],'#c57b55');partMeshes.push(...group.children)
         }else if(part.package==='factory.case-cell'){
@@ -138,6 +163,14 @@ export default function FactoryTwin3D(){
             box(head,[.7,.13,.7],'#6d8793')
             for(const side of [-1,1])box(head,[.09,.48,.7],'#a2b2ad',side*.38,-.26,0)
             box(group,[.9,.09,.8],'#c79b69',0,.16,0)
+            box(group,[1.8,.06,.08],'#d7a34b',0,.18,.65)
+          }else if(station==='검사'){
+            box(group,[.28,.28,.32],'#456579',0,1.47,-.62)
+            const lens=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.13,16),new THREE.MeshStandardMaterial({color:'#182f39',metalness:.5,roughness:.25}));lens.rotation.x=Math.PI/2;lens.position.set(0,1.4,-.38);group.add(lens)
+            box(group,[1.1,.035,.05],'#d8edea',0,1.49,-.58)
+          }else{
+            box(group,[.6,.22,.4],'#617f87',-.85,.22,-.45)
+            box(group,[.16,.08,.14],'#d95042',-.85,.39,-.37)
           }
         }
       }
@@ -177,6 +210,7 @@ export default function FactoryTwin3D(){
     const draw=()=>{controls.update();for(const value of cargoMeshes.values())value.mesh.position.lerp(value.target,.28)
       const t=performance.now()*.001
       for(const arm of robotArms){const active=!stopped&&assemblyPhase>0;arm.rotation.y=THREE.MathUtils.lerp(arm.rotation.y,active?Math.sin(t*3)*.55:0,.1);arm.rotation.z=THREE.MathUtils.lerp(arm.rotation.z,active?Math.sin(t*3+1)*.13:0,.1)}
+      for(const wrist of robotWrists)wrist.rotation.z=THREE.MathUtils.lerp(wrist.rotation.z,!stopped&&assemblyPhase>0?Math.sin(t*4+.7)*.38:0,.12)
       for(const head of packingHeads)head.position.y=THREE.MathUtils.lerp(head.position.y,!stopped&&packingPhase===1?1.12:1.5,.1)
       renderer.render(scene,camera);frame=requestAnimationFrame(draw)};draw()
     return()=>{disposed=true;clearInterval(poll);cancelAnimationFrame(frame);observer.disconnect();renderer.domElement.removeEventListener('click',click);controls.dispose();scene.traverse(object=>{if(object instanceof THREE.Mesh){object.geometry.dispose();const materials=Array.isArray(object.material)?object.material:[object.material];materials.forEach(material=>material.dispose())}});renderer.dispose();element.removeChild(renderer.domElement)}
