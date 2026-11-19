@@ -1,1 +1,17 @@
 html{scroll-behavior:smooth}
+body[data-demo='true']::after {
+  content: '공개 미리보기 · 저장된 예시 데이터 · 현장 제어는 로컬 MES에서 사용';
+  position: fixed;
+  z-index: 10000;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 9px 16px;
+  border-radius: 10px;
+  color: #fff;
+  background: rgba(26, 53, 61, .93);
+  box-shadow: 0 6px 22px #102b3440;
+  font-size: 13px;
+  text-align: center;
+  max-width: calc(100vw - 24px);
+}

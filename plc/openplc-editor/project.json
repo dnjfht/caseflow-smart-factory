@@ -1,0 +1,96 @@
+{
+  "meta": {
+    "name": "소형 케이스 조립·검사·포장 자동화 공정",
+    "type": "plc-project"
+  },
+  "data": {
+    "dataTypes": [],
+    "pous": [],
+    "configuration": {
+      "resource": {
+        "tasks": [
+          {
+            "name": "task0",
+            "triggering": "Cyclic",
+            "interval": "T#20ms",
+            "priority": 1
+          }
+        ],
+        "instances": [
+          {
+            "name": "instance0",
+            "task": "task0",
+            "program": "main"
+          }
+        ],
+        "globalVariables": []
+      }
+    },
+    "libraries": [],
+    "debugVariables": {
+      "pous": {
+        "main": [
+          "StartPB",
+          "StopPB",
+          "BodyDetected",
+          "LidDetected",
+          "BodyAtAssembly",
+          "LidAtAssembly",
+          "RobotReady",
+          "RobotDone",
+          "AssembledDetected",
+          "InspectionDetected",
+          "RejectDetected",
+          "PackDetected",
+          "PackDone",
+          "FinishedGoodsDetected",
+          "ShipmentDetected",
+          "BodyConveyorRun",
+          "LidConveyorRun",
+          "BodyFeedEnable",
+          "LidFeedEnable",
+          "BodyStopper",
+          "LidStopper",
+          "RobotStart",
+          "AssemblyOutRun",
+          "InspectionConveyorRun",
+          "RejectDiverter",
+          "PackingConveyorRun",
+          "PackStart",
+          "FinishedGoodsConveyorRun",
+          "ShippingConveyorRun",
+          "AlarmLamp",
+          "WorkOrderActive",
+          "ProductType",
+          "TargetQuantity",
+          "MaterialPermit",
+          "ProducedCount",
+          "RejectCount",
+          "MachineState",
+          "FaultCode",
+          "InspectionResultValidWord",
+          "InspectionResultValid",
+          "InspectionResultWord",
+          "InspectionResult",
+          "WorkOrderActiveOK",
+          "M0",
+          "M1",
+          "M2",
+          "M3",
+          "M4",
+          "M5",
+          "M6",
+          "M7",
+          "M8",
+          "M9",
+          "M10",
+          "M11",
+          "M12",
+          "M13",
+          "M14",
+          "M15"
+        ]
+      }
+    }
+  }
+}

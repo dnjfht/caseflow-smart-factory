@@ -1,0 +1,12 @@
+Gazebo Indy7 upstream source
+Repository: https://github.com/neuromeka-robotics/indy-ros2
+Branch: jazzy-indyDCP3
+Verified commit: ca0353f077620c877c1edff2e26c8cd976773f27
+ROS: ROS 2 Jazzy on Ubuntu 24.04 (WSL)
+Launch: ros2 launch indy_gazebo indy_gazebo.launch.py indy_type:=indy7 launch_rviz:=false
+
+The upstream ROS/Gazebo packages are not vendored into CASEFLOW. Clone the
+verified commit, install its dependencies, build with colcon, and use
+start-gazebo.sh. CASEFLOW-owned PLC bridge and launch configuration are in
+this directory. Do not represent CASEFLOW's independent OIP robot animation
+as a Gazebo robot pose or a real gripper pick.
