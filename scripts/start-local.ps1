@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$OipExe = $env:CASEFLOW_OIP_EXE,
     [string]$OipProject,
     [switch]$NoBrowser
@@ -89,6 +89,8 @@ Wait-Port 4843 20
 
 if (-not (Test-Port 8085)) {
     if (-not (Get-Command java -ErrorAction SilentlyContinue)) { throw 'Java 25가 필요합니다.' }
+    # this script runs the line in OIP Desktop, so the MES reads its PLC over OPC UA (the server default is the web twin)
+    $env:MES_PLC_MODE = 'opcua'
     Start-Process -FilePath 'cmd.exe' -ArgumentList '/c', 'mvnw.cmd spring-boot:run' -WorkingDirectory $backend -WindowStyle Hidden | Out-Null
     Write-Host 'MES 서버를 시작했습니다.'
     Wait-Port 8085 55

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { Data } from './App'
 import { s } from './App'
 import { TwinSlot } from './TwinHost'
-import { isStaticSite, twin, useTwinTags } from './twin'
+import { isStaticSite, twin, useTwinLink, useTwinTags } from './twin'
 
 import './LiveScene.css'
 
@@ -10,7 +10,11 @@ const STATE: Record<number, string> = { 1: '대기 (MES 허가 없음)', 2: '가
 
 /** The line as the person on the floor sees it: the 3D twin, and the operator panel next to it. */
 export default function LiveScene({ data }: { data: Data; onUpdate: () => Promise<unknown> }) {
-  const { ready, tags } = useTwinTags(400)
+  const { ready, tags: localTags } = useTwinTags(400)
+  const link = useTwinLink()
+  const viewer = link.mode === 'viewer'
+  // a watcher shows the driving browser's line, not its own idle copy
+  const tags = viewer ? link.serverTags : localTags
   const [notice, setNotice] = useState('')
   const active = data.orders.find(order => ['RUNNING', 'PAUSED'].includes(s(order, 'STATUS')))
   const permit = tags.MesPermit === true
@@ -29,7 +33,7 @@ export default function LiveScene({ data }: { data: Data; onUpdate: () => Promis
     setNotice(on ? '공개 시연용 허가를 냈습니다. 현장 시작 버튼을 누르세요.' : '허가를 해제했습니다.')
   }
   return <section className="card live-scene">
-    <div className="op-title"><div><small>LIVE FACTORY · WEB TWIN</small><h2>3D 현장 · 현장 조작반</h2></div><span>{ready ? '가상 공정 가동 중' : '가상 공정 불러오는 중'}</span></div>
+    <div className="op-title"><div><small>LIVE FACTORY · WEB TWIN</small><h2>3D 현장 · 현장 조작반</h2></div><span>{!ready ? '가상 공정 불러오는 중' : link.mode === 'driver' ? 'MES 서버 연결 · 실적 DB 기록 중' : link.mode === 'viewer' ? '관전 모드' : link.mode === 'static' ? '공개 시연' : 'MES 서버 연결 중'}</span></div>
     <div className="live-scene-layout">
       <TwinSlot view="overview" />
       <div className="field-panel">
@@ -41,8 +45,8 @@ export default function LiveScene({ data }: { data: Data; onUpdate: () => Promis
         </div>
         <p className="field-state">{ready ? STATE[state] ?? `상태 ${state}` : '현장 제어기 연결 대기'}</p>
         <div className="field-buttons">
-          <button className="pb start" disabled={!ready || running} onClick={() => press('HmiStart')}>시작</button>
-          <button className="pb stop" disabled={!ready || !running} onClick={() => press('HmiStop')}>정지</button>
+          <button className="pb start" disabled={!ready || running || viewer} onClick={() => press('HmiStart')}>시작</button>
+          <button className="pb stop" disabled={!ready || !running || viewer} onClick={() => press('HmiStop')}>정지</button>
         </div>
         <dl className="field-counts">
           <div><dt>목표</dt><dd>{num('TargetQuantity')}</dd></div>
@@ -52,6 +56,7 @@ export default function LiveScene({ data }: { data: Data; onUpdate: () => Promis
           <div><dt>출하</dt><dd>{num('ShippedCount')}</dd></div>
         </dl>
         {isStaticSite && <div className="field-demo"><small>공개 시연 · MES 서버 없이 실행 중</small><div><button disabled={!ready || permit} onClick={() => demoPermit(true)}>MES 허가 (시연)</button><button disabled={!ready || !permit} onClick={() => demoPermit(false)}>허가 해제</button></div></div>}
+        {link.message && <p className="field-link">{link.message}</p>}
         {notice && <p className="field-notice" role="status">{notice}</p>}
       </div>
     </div>

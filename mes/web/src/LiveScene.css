@@ -20,3 +20,4 @@
 .field-demo button:first-child{background:#2a876d;color:#fff;border-color:#2a876d}.field-demo button:disabled{opacity:.45;cursor:default}
 .field-notice{margin:0;color:#a04434;font-size:11px;line-height:1.5}
 @media(max-width:1000px){.live-scene-layout{grid-template-columns:1fr}}
+.field-link{margin:0;padding:8px 10px;border-radius:7px;background:#fff7e6;color:#8a6417;font-size:11px;line-height:1.5}

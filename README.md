@@ -2,7 +2,7 @@
 
 본체와 뚜껑을 반복 공급하고 로봇으로 조립한 뒤, 검사 결과에 따라 불량품을 분류하거나 양품을 포장·출고하는 공정입니다. 작업지시의 **목표 양품 수량**에 도달할 때까지 불량품 수만큼 다음 세트를 보충합니다.
 
-**공개 웹:** https://caseflow-smart-factory.onrender.com — MES 화면 안에서 3D 가상 공정(웹 트윈)과 PLC가 브라우저에서 실제로 돌아갑니다.
+**공개 웹:** https://caseflow-smart-factory.onrender.com — MES 화면 안에서 3D 가상 공정(웹 트윈)과 PLC가 돌고, MES 서버와 Postgres DB에 연결됩니다.
 
 ## 구성
 
@@ -47,17 +47,34 @@ Render 빌드(`mes/web`의 `npm run build`)가 `twin/build-twin.mjs`를 실행�
 
 MES `설비 · 로봇` 화면에서 조립 로봇(6축)을 협동로봇 앱처럼 다룹니다: 관절별 조그(1°/5°/10°), 웨이포인트 저장·추가, 조립 작업(Job 1) 순서 편집(이동·흡착·대기·신호), 1회 시험 실행, 공정에 적용. 공정 가동 중에는 수동 조작이 잠기고, 관절 한계를 넘는 값은 이동하지 않습니다. 적용한 순서는 PLC가 다음 조립부터 실행합니다.
 
-## 로컬 실행 (OIP 데스크톱 + MES 서버)
+## MES와 공정의 연결
 
-1. Java 25, Node.js, `oip/background-runtime.patch`가 적용된 OIP 실행본을 준비하고 `oip/project`를 OIP에서 한 번 열어 둡니다.
-2. `powershell -ExecutionPolicy Bypass -File scripts/start-local.ps1` — OIP를 최소화해 시작하고 Play·OPC UA를 확인한 뒤 MES 서버(8085)와 웹(5173)을 시작합니다.
-3. MES 작업지시에서 `가동 허가` → OIP(또는 웹 트윈)에서 시작 버튼을 누르면 공정이 돌고, OPC UA로 수량이 DB에 반영됩니다.
+MES 서버(`mes/backend`)는 PLC를 두 가지 방식 중 하나로 봅니다(`MES_PLC_MODE`).
+
+| 방식 | PLC | 쓰는 곳 |
+|---|---|---|
+| `twin` (기본) | MES 화면 안의 웹 트윈이 0.5초마다 태그를 `/api/twin/sync`로 보내고, MES의 허가·목표·자재 허가·재고 표시를 받아 PLC에 씁니다 | 배포 사이트, 로컬에서 MES만 켤 때 |
+| `opcua` | OIP 데스크톱의 PLC를 OPC UA(4843)로 읽고 씁니다 | `scripts/start-local.ps1` |
+
+어느 방식이든 실적은 DB에 기록되고, MES에서 한 일(작업지시 허가·정지, 자재 입고)은 PLC에 반영됩니다. 웹 트윈은 한 번에 한 화면만 현장을 운전하고(리스), 다른 사람이 연 MES는 관전 모드로 같은 수치를 봅니다. 티치펜던트로 적용한 로봇 프로그램도 DB(`twin_robot_program`)에 저장되어 다음 접속에 그대로 불러옵니다.
+
+배포 구성:
+- **MES 웹 + 웹 트윈:** Render 정적 사이트 `caseflow-smart-factory` (`VITE_API_BASE`가 MES 서버 주소)
+- **MES 서버:** Render 웹 서비스(Docker, `mes/backend/Dockerfile`), `MES_CORS_ORIGINS`에 정적 사이트 주소
+- **DB:** Neon 무료 Postgres. 서버 환경 변수 `DATABASE_URL` 하나로 연결됩니다(로컬 기본값은 H2 파일)
+
+무료 서버는 15분간 요청이 없으면 잠들어, 처음 접속 때 30초 정도 깨어나는 시간이 걸립니다. 데이터는 Postgres에 있어 지워지지 않습니다.
+
+## 로컬 실행
+
+- **MES만:** `mes/backend`에서 `mvnw spring-boot:run`, `mes/web`에서 `npm run dev` → http://127.0.0.1:5173 을 열면 화면 안의 웹 트윈이 현장이 됩니다(웹 트윈은 `BUILD_TWIN=1 npm run build` 후 `npm run preview`로 함께 띄우거나 배포 사이트에서 확인).
+- **OIP 데스크톱으로:** `powershell -ExecutionPolicy Bypass -File scripts/start-local.ps1` — OIP를 최소화해 시작하고 Play·OPC UA를 확인한 뒤 MES 서버(`MES_PLC_MODE=opcua`)와 웹을 시작합니다.
 
 ## 검증 범위와 남은 부분
 
 - OIP 공정 시험 5종 통과(헤드리스 엔진, 브라우저판과 같은 코드).
 - 웹 트윈: 허가 없는 시작 무시 → 허가 시 램프 점등 → 시작 버튼으로 가동 → 정지 버튼으로 정지, 티치펜던트 조그·저장·적용·시험 실행을 브라우저 자동화로 확인했습니다.
-- 공개 사이트는 정적 호스팅이라 MES 서버·DB가 없습니다. 공개 사이트의 MES 기록(계획·LOT·출고)은 예시 데이터이고, 3D 공정과 PLC는 각 방문자의 브라우저에서 따로 돕니다. 웹 트윈의 실적을 DB에 저장하려면 MES 서버를 함께 배포해야 합니다(후속 작업).
+- MES 허가 → 웹 트윈 PLC 허가·목표 기록 → 현장 시작 → 투입 수량이 Postgres 작업지시에 반영되는 것을 실제 서버·DB로 확인했습니다.
 - 검사는 규칙 기반 판정입니다. 영상 불량 판정과 원인 분류는 미적용입니다.
 - 제품별 물리 ID를 출고 차량까지 보존하는 기능은 후속 작업입니다.
 

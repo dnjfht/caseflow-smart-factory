@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { TwinSlot } from './TwinHost'
-import { twin, useTwinTags } from './twin'
+import { isStaticSite, twin, useTwinLink, useTwinTags } from './twin'
 import './TeachPendant.css'
 
 // A teach pendant for the line's assembly robot, laid out like a cobot app: jog each joint, store poses as
@@ -16,7 +16,9 @@ const round = (v: number) => Math.round(v * 10) / 10
 
 export default function TeachPendant() {
   const { ready, tags } = useTwinTags(300)
-  const running = tags.M0 === true
+  const link = useTwinLink()
+  const viewer = link.mode === 'viewer'
+  const running = tags.M0 === true || (viewer && link.serverTags.M0 === true)
   const [joints, setJoints] = useState<number[] | null>(null)
   const [inc, setInc] = useState(5)
   const [prog, setProg] = useState<Program | null>(null)
@@ -45,7 +47,7 @@ export default function TeachPendant() {
     return () => window.clearInterval(id)
   }, [])
 
-  const locked = !ready || running || busy
+  const locked = !ready || running || busy || viewer
   async function act(label: string, fn: () => Promise<string | null> | string | null) {
     setBusy(true)
     try { const err = await fn(); setMsg(err ?? label) } finally { setBusy(false) }
@@ -86,8 +88,11 @@ export default function TeachPendant() {
     const t = twin()
     if (!t) return '시뮬레이터 준비 중입니다.'
     const err = t.robot.apply(prog)
-    if (!err) setDirty(false)
-    return err
+    if (err) return err
+    setDirty(false)
+    // kept in the MES database, so the next session (anyone's) starts from this program
+    if (!isStaticSite) void fetch('/api/twin/robot-program', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...prog, savedBy: 'MES 티치펜던트' }) })
+    return null
   })
   const testRun = () => act('조립 작업 1회 시험 실행을 마쳤습니다.', () => twin()?.robot.runJob(1) ?? '시뮬레이터 준비 중입니다.')
   function restore() { if (original.current) { setProg(structuredClone(original.current)); setDirty(true); setMsg('원래 프로그램을 불러왔습니다. 적용을 눌러야 공정에 반영됩니다.') } }
@@ -145,6 +150,7 @@ export default function TeachPendant() {
         {dirty && <em>적용하지 않은 변경이 있습니다</em>}
       </div>
     </div>
+    {viewer && <p className="op-message">{link.message}</p>}
     {msg && <p className="op-message" role="status">{msg}</p>}
     <p className="fine">공정이 가동 중이면 안전을 위해 수동 조작이 잠깁니다(현장 정지 후 사용). 관절 한계를 넘는 값은 이동하지 않습니다. 적용한 순서는 PLC가 다음 조립부터 실행합니다.</p>
   </section>

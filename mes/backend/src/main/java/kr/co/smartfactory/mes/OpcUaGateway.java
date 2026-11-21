@@ -10,16 +10,26 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.TimestampsToReturn;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /** OIP's local simulated PLC, published at localhost only. This is not OpenPLC Runtime. */
 @Component
-public class OpcUaGateway {
+@ConditionalOnProperty(name = "mes.plc.mode", havingValue = "opcua", matchIfMissing = true)
+public class OpcUaGateway implements PlcGateway {
     private final String endpoint;
+    private final OipRunGateway oip;
     private OpcUaClient client;
 
-    public OpcUaGateway(@Value("${mes.opc.endpoint:opc.tcp://127.0.0.1:4843}") String endpoint) {
+    public OpcUaGateway(@Value("${mes.opc.endpoint:opc.tcp://127.0.0.1:4843}") String endpoint, OipRunGateway oip) {
         this.endpoint = endpoint;
+        this.oip = oip;
+    }
+
+    @Override
+    public void resetLine() throws Exception {
+        oip.resetLine();
+        close();
     }
 
     private synchronized OpcUaClient client() throws Exception {
@@ -43,6 +53,7 @@ public class OpcUaGateway {
         return ((Number) read(name)).intValue();
     }
 
+    @Override
     public PlcSnapshot sample() {
         try {
             return new PlcSnapshot(true, "OIP 내부 PLC 연결", Instant.now(),
@@ -67,24 +78,29 @@ public class OpcUaGateway {
     }
 
     /** MES는 가동 허가만 내린다. 허가가 있어도 현장 시작 버튼(StartPB/HmiStart)을 눌러야 공정이 돈다. */
+    @Override
     public void stop(boolean stopped) throws Exception {
         write("MesPermit", !stopped);
     }
 
+    @Override
     public void target(int quantity) throws Exception {
         write("TargetQuantity", (short) quantity); // OIP INT is OPC UA Int16.
     }
 
+    @Override
     public void materialPermit(boolean permitted) throws Exception {
         write("MesMaterialPermit", permitted);
     }
 
+    @Override
     public void materialStock(int bodies, int lids) throws Exception {
         write("BodyStockDisplay", (short) bodies);
         write("LidStockDisplay", (short) lids);
     }
 
     @PreDestroy
+    @Override
     public void close() { resetClient(); }
 
     private synchronized void resetClient() {

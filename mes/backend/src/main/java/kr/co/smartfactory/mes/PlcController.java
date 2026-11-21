@@ -12,9 +12,9 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping("/api/plc")
 public class PlcController {
-    private final OpcUaGateway gateway;
+    private final PlcGateway gateway;
 
-    public PlcController(OpcUaGateway gateway) { this.gateway = gateway; }
+    public PlcController(PlcGateway gateway) { this.gateway = gateway; }
 
     @GetMapping
     public PlcSnapshot snapshot() { return gateway.sample(); }

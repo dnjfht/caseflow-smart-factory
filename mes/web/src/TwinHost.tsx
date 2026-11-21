@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { TWIN_FRAME_ID, TWIN_URL, twin } from './twin'
+import { TWIN_FRAME_ID, TWIN_URL, startTwinSync, twin } from './twin'
 import './TwinHost.css'
 
 // One twin frame for the whole MES: it loads when the MES opens and keeps the line running while the person
@@ -8,6 +8,7 @@ import './TwinHost.css'
 
 type Slot = { el: HTMLElement; view: 'overview' | 'robot' | 'shipping' }
 let current: Slot | null = null
+let syncing = false
 const listeners = new Set<() => void>()
 const announce = () => listeners.forEach((l) => l())
 
@@ -29,6 +30,23 @@ export function TwinSlot({ view = 'overview', className = '' }: { view?: Slot['v
 export default function TwinHost() {
   const frame = useRef<HTMLIFrameElement>(null)
   const [slot, setSlot] = useState<Slot | null>(current)
+  const [failed, setFailed] = useState(false)
+  const retries = useRef(0)
+  // A GPU that refuses or loses the 3D context leaves the frame showing "Renderer unavailable". Reload it
+  // once by itself, then offer a button: the line restarts, the MES data does not change.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      try {
+        const doc = frame.current?.contentDocument
+        const broken = !!doc?.body?.innerText.includes('Renderer unavailable')
+        if (broken && retries.current < 1) { retries.current++; reload() }
+        else setFailed(broken)
+      } catch { /* not loaded yet */ }
+    }, 2000)
+    return () => window.clearInterval(id)
+  }, [])
+  function reload() { setFailed(false); const f = frame.current; if (f) f.src = TWIN_URL + '&t=' + Date.now() }
+  useEffect(() => { if (!syncing) { syncing = true; startTwinSync() } }, [])
   useEffect(() => {
     const l = () => setSlot(current)
     listeners.add(l)
@@ -59,5 +77,18 @@ export default function TwinHost() {
     }, 300)
     return () => { cancelAnimationFrame(raf); window.clearInterval(aim) }
   }, [slot])
-  return <iframe ref={frame} id={TWIN_FRAME_ID} className="twin-frame" title="CaseFlow 3D 현장 (웹 트윈)" src={TWIN_URL} allow="fullscreen" />
+  return <>
+    <iframe ref={frame} id={TWIN_FRAME_ID} className="twin-frame" title="CaseFlow 3D 현장 (웹 트윈)" src={TWIN_URL} allow="fullscreen" />
+    {failed && slot && <TwinError el={slot.el} onRetry={() => { retries.current = 1; reload() }} />}
+  </>
+}
+
+function TwinError({ el, onRetry }: { el: HTMLElement; onRetry: () => void }) {
+  const r = el.getBoundingClientRect()
+  return <div className="twin-error" style={{ left: r.left + window.scrollX, top: r.top + window.scrollY, width: r.width, height: r.height }}>
+    <strong>3D 화면을 그리지 못했습니다</strong>
+    <span>브라우저가 그래픽(WebGL)을 일시적으로 막았습니다. 가상 공정과 PLC는 계속 동작합니다.</span>
+    <button onClick={onRetry}>3D 다시 불러오기</button>
+    <small>계속되면 브라우저를 다시 시작하거나 Chrome·Edge의 하드웨어 가속을 켜 주세요.</small>
+  </div>
 }

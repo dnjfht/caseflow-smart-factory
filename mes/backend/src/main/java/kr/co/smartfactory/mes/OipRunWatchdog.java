@@ -9,7 +9,7 @@ import tools.jackson.databind.JsonNode;
 
 /** A hidden editor can report running while its visual simulation has stopped advancing. */
 @Component
-@ConditionalOnProperty(name="mes.poll.enabled",havingValue="true",matchIfMissing=true)
+@ConditionalOnProperty(name="mes.plc.mode",havingValue="opcua",matchIfMissing=true)
 public class OipRunWatchdog {
     private static final Logger log=LoggerFactory.getLogger(OipRunWatchdog.class);
     private final OipRunGateway oip;

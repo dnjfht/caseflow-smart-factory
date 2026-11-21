@@ -13,6 +13,7 @@ export type CaseflowApi = {
   view(name: 'overview' | 'robot' | 'shipping', instant?: boolean): void
   write(key: string, value: boolean | number): string | null
   press(key: 'HmiStart' | 'HmiStop'): Promise<void>
+  reset(): Promise<void>
   robot: {
     limits: [number, number][]
     joints(): number[] | null
@@ -23,7 +24,8 @@ export type CaseflowApi = {
   }
 }
 
-export const TWIN_URL = '/app/?scene=caseflow&present=1'
+// gfx=low: no MSAA, capped pixel ratio, clamped shadows - the twin shares the GPU with the MES page and laptops' integrated GPUs
+export const TWIN_URL = '/app/?scene=caseflow&present=1&gfx=low'
 export const TWIN_FRAME_ID = 'caseflow-twin'
 
 /** the twin's API, or null while its frame is still loading */
@@ -63,4 +65,64 @@ export function plcFromTags(t: Tags) {
     machineState: n('MachineState'), assemblyPhase: n('AssemblyPhase'), inspectionPhase: n('InspectionPhase'), packingPhase: n('PackingPhase'),
     mesStop: t.MesPermit !== true, motorRunning: t.BodyConveyorRun === true,
   }
+}
+
+// ---- the link to the MES server -------------------------------------------------------------------------------
+// One open MES drives the line at a time: its twin syncs tags to the server and applies the server's writes
+// (permit, target, material). Others watch: their own twin idles and their panels show the driver's numbers.
+export type LinkMode = 'connecting' | 'driver' | 'viewer' | 'offline' | 'static'
+type LinkState = { mode: LinkMode; serverTags: Tags; message: string }
+let link: LinkState = { mode: isStaticSite ? 'static' : 'connecting', serverTags: {}, message: '' }
+const linkListeners = new Set<(s: LinkState) => void>()
+function setLink(next: Partial<LinkState>) { link = { ...link, ...next }; linkListeners.forEach((l) => l(link)) }
+export function useTwinLink(): LinkState {
+  const [s, set] = useState(link)
+  useEffect(() => { linkListeners.add(set); return () => { linkListeners.delete(set) } }, [])
+  return s
+}
+
+const SYNC_TAGS = ['M0', 'MesPermit', 'MesMaterialPermit', 'WorkOrderActive', 'TargetQuantity', 'MachineState', 'FaultCode',
+  'LaunchedCount', 'RejectCount', 'ProducedCount', 'ShippedCount', 'AssemblyPhase', 'InspectionPhase', 'PackingPhase',
+  'BodyConveyorRun', 'BodyStopper', 'LidStopper', 'RejectDiverter', 'RobotReady', 'PermitLamp', 'RunLamp', 'AlarmLamp',
+  'BodyStockDisplay', 'LidStockDisplay']
+const session = Math.random().toString(36).slice(2)
+let lastReset: number | null = null
+let programLoaded = false
+
+/** the robot program last applied on any pendant, from the MES database */
+export async function loadRobotProgram(t: CaseflowApi) {
+  const r = await fetch('/api/twin/robot-program')
+  if (!r.ok) return
+  const body = await r.json() as { program?: { waypoints: number[][]; names: string[]; steps: number[][] } }
+  if (body.program && !t.lineRunning()) t.robot.apply(body.program)
+}
+
+export function startTwinSync() {
+  if (isStaticSite) return
+  let busy = false
+  window.setInterval(async () => {
+    const t = twin()
+    if (!t || busy) return
+    busy = true
+    try {
+      const all = t.tags()
+      const tags = Object.fromEntries(SYNC_TAGS.filter((k) => k in all).map((k) => [k, all[k]]))
+      const r = await fetch('/api/twin/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session, tags }) })
+      if (!r.ok) throw Error(`HTTP ${r.status}`)
+      const reply = await r.json() as { lease: boolean; writes: Tags; resetSeq: number; tags: Tags }
+      if (!reply.lease) {
+        // watching: keep this browser's own line idle so it never runs a second copy of the job
+        if (all.MesPermit === true) t.write('MesPermit', false)
+        setLink({ mode: 'viewer', serverTags: reply.tags, message: '다른 화면이 현장을 운전 중입니다. 이 화면은 관전 모드입니다.' })
+        return
+      }
+      if (lastReset === null) lastReset = reply.resetSeq
+      else if (reply.resetSeq !== lastReset) { lastReset = reply.resetSeq; await t.reset(); return }
+      for (const [k, v] of Object.entries(reply.writes)) if (all[k] !== v && (typeof v === 'boolean' || typeof v === 'number')) t.write(k, v)
+      if (!programLoaded) { programLoaded = true; void loadRobotProgram(t) }
+      setLink({ mode: 'driver', serverTags: {}, message: '' })
+    } catch {
+      setLink({ mode: 'offline', message: 'MES 서버에 연결 중입니다. (무료 서버는 처음 깨어나는 데 30초쯤 걸립니다)' })
+    } finally { busy = false }
+  }, 500)
 }

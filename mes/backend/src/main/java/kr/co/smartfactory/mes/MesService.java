@@ -16,17 +16,15 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class MesService {
     private final JdbcTemplate db;
-    private final OpcUaGateway plc;
+    private final PlcGateway plc;
     private final LotService lots;
-    private final OipRunGateway oipRun;
     private final TransactionTemplate transactions;
     private volatile PlcSnapshot latest = PlcSnapshot.offline("아직 측정하지 않음");
 
-    public MesService(JdbcTemplate db, OpcUaGateway plc, LotService lots, OipRunGateway oipRun, TransactionTemplate transactions) {
+    public MesService(JdbcTemplate db, PlcGateway plc, LotService lots, TransactionTemplate transactions) {
         this.db = db;
         this.plc = plc;
         this.lots = lots;
-        this.oipRun = oipRun;
         this.transactions = transactions;
     }
 
@@ -80,9 +78,8 @@ public class MesService {
 
     private PlcSnapshot cleanLine(PlcSnapshot current) throws Exception {
         if (current.launched()==0 && current.rejected()==0 && current.packed()==0 && current.lineExit()==0) return current;
-        oipRun.resetLine();
-        plc.close();
-        for (int attempt=0;attempt<40;attempt++) {
+        plc.resetLine();
+        for (int attempt=0;attempt<plc.resetTimeoutMs()/150;attempt++) {
             Thread.sleep(150);
             PlcSnapshot next=plc.sample();
             if (next.connected() && next.launched()==0 && next.rejected()==0 && next.packed()==0 && next.lineExit()==0) {

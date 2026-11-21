@@ -13,10 +13,10 @@ index 040f563..cc418b5 100644
            view: v,
 diff --git a/src/editor/caseflow/bridge.ts b/src/editor/caseflow/bridge.ts
 new file mode 100644
-index 0000000..d6cf203
+index 0000000..e188233
 --- /dev/null
 +++ b/src/editor/caseflow/bridge.ts
-@@ -0,0 +1,185 @@
+@@ -0,0 +1,202 @@
 +// CaseFlow twin bridge (this fork's only addition to the simulator).
 +//
 +// With ?scene=caseflow the editor boots straight into the CaseFlow case-assembly line (public/caseflow/caseflow.oip),
@@ -30,6 +30,7 @@ index 0000000..d6cf203
 +
 +type Controller = {
 +  run(): void
++  stop(): void
 +  writePlcValue(key: string, text: string): string | null
 +  forcePlcValue(key: string, text?: string): string | null
 +  releasePlcForces(key?: string): void
@@ -120,15 +121,23 @@ index 0000000..d6cf203
 +    if (lineRunning()) return '공정 가동 중에는 수동 조작이 잠깁니다. 현장 정지 후 사용하세요.'
 +    busy = true
 +    try {
++      // a robot still finishing its last job drops a new Execute edge, as a real controller does: wait for Done
++      const w0 = performance.now()
++      while (tags().RobotReady !== true) {
++        if (performance.now() - w0 > timeoutMs) return '로봇이 이전 동작을 마치지 못했습니다. 잠시 후 다시 시도하세요.'
++        await sleep(100)
++      }
 +      c.forcePlcValue('RobotCommand', String(job))
 +      c.forcePlcValue('RobotStart', 'FALSE')
 +      await sleep(150)
 +      c.forcePlcValue('RobotStart', 'TRUE')
-+      await sleep(400)
 +      const t0 = performance.now()
++      let started = false
 +      while (performance.now() - t0 < timeoutMs) {
-+        if (tags().RobotReady === true) break
-+        await sleep(100)
++        const ready = tags().RobotReady === true
++        if (!ready) started = true
++        else if (started || performance.now() - t0 > 1500) break
++        await sleep(50)
 +      }
 +      return null
 +    } finally {
@@ -143,6 +152,14 @@ index 0000000..d6cf203
 +    tags,
 +    lineRunning,
 +    busy: () => busy,
++    /** stop and restart the simulation: counters, latches and cargo clear (a new work order starts clean) */
++    reset: async (): Promise<void> => {
++      const c = ctrl()
++      if (!c) return
++      c.stop()
++      await sleep(600)
++      c.run()
++    },
 +    view: (name: string, instant = false): void => {
 +      const pose = VIEWS[name]
 +      if (pose) w.__oip?.view?.setCameraPose(pose, { instant })
