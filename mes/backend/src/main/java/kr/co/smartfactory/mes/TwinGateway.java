@@ -48,6 +48,12 @@ public class TwinGateway implements PlcGateway {
     private final AtomicInteger resetSeq = new AtomicInteger();
     private final AtomicInteger programSeq = new AtomicInteger();
 
+    /** the counters the MES reconciles; kept continuous when the line of record changes copy mid-order */
+    static final String[] COUNTERS = {"LaunchedCount", "RejectCount", "ProducedCount", "ShippedCount"};
+    private Side recordSide;
+    private final int[] lastCount = new int[COUNTERS.length];
+    private final int[] offset = new int[COUNTERS.length];
+
     public record SyncReply(boolean lease, Map<String, Object> writes, List<String> pulses, int resetSeq, int programSeq,
         boolean fieldConnected, Map<String, Object> tags) { }
 
@@ -99,14 +105,22 @@ public class TwinGateway implements PlcGateway {
     public void programChanged() { programSeq.incrementAndGet(); }
 
     @Override
-    public PlcSnapshot sample() {
+    public synchronized PlcSnapshot sample() {
         Instant now = Instant.now();
         boolean fieldLine = field.fresh(now);
         Side line = fieldLine ? field : twin.fresh(now) ? twin : null;
         if (line == null) return PlcSnapshot.offline("현장 연결 대기: MES 화면(웹 트윈) 또는 현장 PC(OIP)가 연결되면 가동됩니다");
         Map<String, Object> t = line.tags;
+        int[] c = new int[COUNTERS.length];
+        if (line != recordSide) {
+            // the other copy took over (field PC connected or dropped): carry on from the counts already reported,
+            // so the switch reads as neither lost nor repeated production
+            if (recordSide != null) for (int i = 0; i < c.length; i++) offset[i] = lastCount[i] - num(t, COUNTERS[i]);
+            recordSide = line;
+        }
+        for (int i = 0; i < c.length; i++) { c[i] = Math.max(0, num(t, COUNTERS[i]) + offset[i]); lastCount[i] = c[i]; }
         return new PlcSnapshot(true, fieldLine ? "현장 PC OIP 연결 (웹 트윈 동기)" : "웹 트윈 PLC 연결", line.seen,
-            num(t, "TargetQuantity"), num(t, "LaunchedCount"), num(t, "RejectCount"), num(t, "ProducedCount"), num(t, "ShippedCount"),
+            num(t, "TargetQuantity"), c[0], c[1], c[2], c[3],
             num(t, "MachineState"), num(t, "AssemblyPhase"), num(t, "InspectionPhase"), num(t, "PackingPhase"),
             !bool(t, "MesPermit"), bool(t, "BodyConveyorRun"), bool(t, "BodyStopper"), bool(t, "LidStopper"), bool(t, "RejectDiverter"));
     }
@@ -128,6 +142,9 @@ public class TwinGateway implements PlcGateway {
         field.seen = Instant.EPOCH;
         twin.runLatch = null;
         field.runLatch = null;
+        recordSide = null;
+        java.util.Arrays.fill(lastCount, 0);
+        java.util.Arrays.fill(offset, 0);
     }
     @Override public long resetTimeoutMs() { return 25000; }
     @Override public void close() { }
