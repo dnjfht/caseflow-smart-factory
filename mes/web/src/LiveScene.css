@@ -21,3 +21,4 @@
 .field-notice{margin:0;color:#a04434;font-size:11px;line-height:1.5}
 @media(max-width:1000px){.live-scene-layout{grid-template-columns:1fr}}
 .field-link{margin:0;padding:8px 10px;border-radius:7px;background:#fff7e6;color:#8a6417;font-size:11px;line-height:1.5}
+.field-pc{margin:0;font-size:11px;color:#7c938f;line-height:1.5;padding-left:16px;position:relative}.field-pc:before{content:'';position:absolute;left:2px;top:5px;width:8px;height:8px;border-radius:50%;background:#c9d4d1}.field-pc.on{color:#1d6b56;font-weight:700}.field-pc.on:before{background:#3bd08f}

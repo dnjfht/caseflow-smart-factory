@@ -28,7 +28,13 @@ public class TwinController {
 
     @PostMapping("/sync")
     public TwinGateway.SyncReply sync(@RequestBody SyncRequest request) {
-        return twin.sync(request.session(), request.tags());
+        return twin.syncTwin(request.session(), request.tags());
+    }
+
+    /** the shop-floor PC's agent: OIP Desktop's tags in, the MES's writes and the other copy's presses out */
+    @PostMapping("/field-sync")
+    public TwinGateway.SyncReply fieldSync(@RequestBody SyncRequest request) {
+        return twin.syncField(request.tags());
     }
 
     public record RobotProgram(List<List<Double>> waypoints, List<String> names, List<List<Double>> steps, String savedBy) { }
@@ -51,6 +57,7 @@ public class TwinController {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "공정 가동 중에는 로봇 프로그램을 바꿀 수 없습니다.");
         db.update("INSERT INTO twin_robot_program (program_json, saved_by) VALUES (?, ?)",
             json.writeValueAsString(program), program.savedBy() == null ? "" : program.savedBy());
+        twin.programChanged();
         return Map.of("saved", true);
     }
 }

@@ -71,8 +71,8 @@ export function plcFromTags(t: Tags) {
 // One open MES drives the line at a time: its twin syncs tags to the server and applies the server's writes
 // (permit, target, material). Others watch: their own twin idles and their panels show the driver's numbers.
 export type LinkMode = 'connecting' | 'driver' | 'viewer' | 'offline' | 'static'
-type LinkState = { mode: LinkMode; serverTags: Tags; message: string }
-let link: LinkState = { mode: isStaticSite ? 'static' : 'connecting', serverTags: {}, message: '' }
+type LinkState = { mode: LinkMode; serverTags: Tags; message: string; field: boolean }
+let link: LinkState = { mode: isStaticSite ? 'static' : 'connecting', serverTags: {}, message: '', field: false }
 const linkListeners = new Set<(s: LinkState) => void>()
 function setLink(next: Partial<LinkState>) { link = { ...link, ...next }; linkListeners.forEach((l) => l(link)) }
 export function useTwinLink(): LinkState {
@@ -81,13 +81,13 @@ export function useTwinLink(): LinkState {
   return s
 }
 
-const SYNC_TAGS = ['M0', 'MesPermit', 'MesMaterialPermit', 'WorkOrderActive', 'TargetQuantity', 'MachineState', 'FaultCode',
+const SYNC_TAGS = ['M0', 'RunLatch', 'MesPermit', 'MesMaterialPermit', 'WorkOrderActive', 'TargetQuantity', 'MachineState', 'FaultCode',
   'LaunchedCount', 'RejectCount', 'ProducedCount', 'ShippedCount', 'AssemblyPhase', 'InspectionPhase', 'PackingPhase',
   'BodyConveyorRun', 'BodyStopper', 'LidStopper', 'RejectDiverter', 'RobotReady', 'PermitLamp', 'RunLamp', 'AlarmLamp',
   'BodyStockDisplay', 'LidStockDisplay']
 const session = Math.random().toString(36).slice(2)
 let lastReset: number | null = null
-let programLoaded = false
+let lastProgram: number | null = null
 
 /** the robot program last applied on any pendant, from the MES database */
 export async function loadRobotProgram(t: CaseflowApi) {
@@ -109,18 +109,20 @@ export function startTwinSync() {
       const tags = Object.fromEntries(SYNC_TAGS.filter((k) => k in all).map((k) => [k, all[k]]))
       const r = await fetch('/api/twin/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session, tags }) })
       if (!r.ok) throw Error(`HTTP ${r.status}`)
-      const reply = await r.json() as { lease: boolean; writes: Tags; resetSeq: number; tags: Tags }
+      const reply = await r.json() as { lease: boolean; writes: Tags; pulses: string[]; resetSeq: number; programSeq: number; fieldConnected: boolean; tags: Tags }
       if (!reply.lease) {
         // watching: keep this browser's own line idle so it never runs a second copy of the job
         if (all.MesPermit === true) t.write('MesPermit', false)
-        setLink({ mode: 'viewer', serverTags: reply.tags, message: '다른 화면이 현장을 운전 중입니다. 이 화면은 관전 모드입니다.' })
+        setLink({ mode: 'viewer', serverTags: reply.tags, field: reply.fieldConnected, message: '다른 화면이 현장을 운전 중입니다. 이 화면은 관전 모드입니다.' })
         return
       }
       if (lastReset === null) lastReset = reply.resetSeq
       else if (reply.resetSeq !== lastReset) { lastReset = reply.resetSeq; await t.reset(); return }
       for (const [k, v] of Object.entries(reply.writes)) if (all[k] !== v && (typeof v === 'boolean' || typeof v === 'number')) t.write(k, v)
-      if (!programLoaded) { programLoaded = true; void loadRobotProgram(t) }
-      setLink({ mode: 'driver', serverTags: {}, message: '' })
+      // a start/stop pressed on OIP Desktop is pressed here too, so both copies run together
+      for (const key of reply.pulses ?? []) if (key === 'HmiStart' || key === 'HmiStop') await t.press(key)
+      if (lastProgram !== reply.programSeq) { lastProgram = reply.programSeq; void loadRobotProgram(t) }
+      setLink({ mode: 'driver', serverTags: {}, field: reply.fieldConnected, message: '' })
     } catch {
       setLink({ mode: 'offline', message: 'MES 서버에 연결 중입니다. (무료 서버는 처음 깨어나는 데 30초쯤 걸립니다)' })
     } finally { busy = false }

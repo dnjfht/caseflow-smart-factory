@@ -56,6 +56,7 @@ export default function LiveScene({ data }: { data: Data; onUpdate: () => Promis
           <div><dt>출하</dt><dd>{num('ShippedCount')}</dd></div>
         </dl>
         {isStaticSite && <div className="field-demo"><small>공개 시연 · MES 서버 없이 실행 중</small><div><button disabled={!ready || permit} onClick={() => demoPermit(true)}>MES 허가 (시연)</button><button disabled={!ready || !permit} onClick={() => demoPermit(false)}>허가 해제</button></div></div>}
+        {!isStaticSite && <p className={link.field ? 'field-pc on' : 'field-pc'}>{link.field ? '현장 PC의 OIP 데스크톱 연결됨 · 시작·정지·허가가 양쪽에 함께 적용됩니다' : '현장 PC(OIP 데스크톱) 미연결 · 웹 트윈이 현장입니다'}</p>}
         {link.message && <p className="field-link">{link.message}</p>}
         {notice && <p className="field-notice" role="status">{notice}</p>}
       </div>

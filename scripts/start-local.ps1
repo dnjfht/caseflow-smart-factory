@@ -1,7 +1,9 @@
 ﻿param(
     [string]$OipExe = $env:CASEFLOW_OIP_EXE,
     [string]$OipProject,
-    [switch]$NoBrowser
+    [switch]$NoBrowser,
+    # connect this PC's OIP Desktop to the deployed MES instead of starting a local MES (the field agent)
+    [string]$FieldAgent
 )
 
 $ErrorActionPreference = 'Stop'
@@ -86,6 +88,17 @@ if (-not $context.running) {
     Write-Host 'OIP 공정이 이미 실행 중입니다.'
 }
 Wait-Port 4843 20
+# load the project files as they are on disk now (an updated program or scene from git)
+try { Invoke-OipTool 'sync_folder' | Out-Null } catch { Write-Host "폴더 동기화를 건너뜁니다: $($_.Exception.Message)" }
+
+if ($FieldAgent) {
+    if (-not (Get-Command node -ErrorAction SilentlyContinue)) { throw 'Node.js 18 이상이 필요합니다.' }
+    $agent = Join-Path $repo 'field-agent/caseflow-field-agent.mjs'
+    Start-Process -FilePath 'cmd.exe' -ArgumentList '/k', "title CaseFlow 현장 에이전트 && node `"$agent`" $FieldAgent" | Out-Null
+    Write-Host "현장 에이전트를 시작했습니다: OIP 데스크톱 <-> $FieldAgent"
+    if (-not $NoBrowser) { Start-Process 'https://caseflow-smart-factory.onrender.com/#process' | Out-Null }
+    return
+}
 
 if (-not (Test-Port 8085)) {
     if (-not (Get-Command java -ErrorAction SilentlyContinue)) { throw 'Java 25가 필요합니다.' }
