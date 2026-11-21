@@ -15,3 +15,5 @@ body[data-demo='true']::after {
   text-align: center;
   max-width: calc(100vw - 24px);
 }
+
+html,body{overflow-x:clip}
