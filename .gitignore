@@ -9,3 +9,6 @@ data/
 .env
 .env.*
 !*.env.example
+
+# web twin build workspace (twin/build-twin.mjs)
+.twin-build/

@@ -1,6 +1,8 @@
 VAR_INPUT
-  MesStop : BOOL := TRUE;
+  MesPermit : BOOL := FALSE; (* MES 가동 허가: MES는 허가만 내리고 실제 가동은 현장 시작 버튼 *)
   MesMaterialPermit : BOOL := TRUE;
+  HmiStart : BOOL := FALSE; (* 현장 HMI(웹 트윈) 시작 버튼 *)
+  HmiStop : BOOL := FALSE; (* 현장 HMI(웹 트윈) 정지 버튼 *)
   IndyBridgeEnabled : BOOL := FALSE;
   IndyDone : BOOL := FALSE;
   IndyFault : BOOL := FALSE;
@@ -43,6 +45,8 @@ VAR
   ShippingConveyorRun AT %QX1.5 : BOOL;
   AlarmLamp AT %QX1.6 : BOOL;
   InspectionStart AT %QX1.7 : BOOL;
+  PermitLamp AT %QX2.1 : BOOL; (* 시작 버튼 램프: MES 허가 대기 중 점등 *)
+  RunLamp AT %QX2.2 : BOOL; (* 운전 중 표시 *)
   RobotCommand AT %QW2 : INT;
   RobotReleasedSignal AT %QX2.0 : BOOL;
   TruckLoadVisual AT %QW3 : INT;
@@ -96,7 +100,7 @@ VAR
   DemoStarted : BOOL := FALSE;
   DrainActive : BOOL := FALSE;
   DrainCycles : INT := 0;
-  ManualStopped : BOOL := FALSE;
+  RunLatch : BOOL := FALSE; (* 현장 시작 버튼으로 걸리는 운전 자기유지 *)
 END_VAR
 
 (* Temporary demonstration order: three GOOD packed and shipped cases.
@@ -109,13 +113,16 @@ IF NOT DemoStarted THEN
   LidStockDisplay := 20;
   DemoStarted := TRUE;
 END_IF;
-IF StopPB THEN ManualStopped := TRUE; END_IF;
-IF StartPB THEN ManualStopped := FALSE; END_IF;
+(* 운전 자기유지: MES 허가 + 현장 시작 버튼 → 운전. 정지 버튼, 허가 해제, 고장, 목표 달성 → 해제 *)
+IF StopPB OR HmiStop OR NOT MesPermit OR (FaultCode <> 0) OR (WorkOrderActive <> 1) OR (ShippedCount >= TargetQuantity) THEN
+  RunLatch := FALSE;
+ELSIF StartPB OR HmiStart THEN
+  RunLatch := TRUE;
+END_IF;
 IF MesMaterialPermit THEN MaterialPermit := 1; ELSE MaterialPermit := 0; END_IF;
 IF IndyBridgeEnabled AND IndyFault THEN FaultCode := 71; END_IF;
-M0 := (WorkOrderActive = 1) AND NOT MesStop
-  AND (ShippedCount < TargetQuantity)
-  AND NOT ManualStopped AND (FaultCode = 0);
+M0 := RunLatch AND MesPermit AND (WorkOrderActive = 1)
+  AND (ShippedCount < TargetQuantity) AND (FaultCode = 0);
 
 InspectionResultValidWord := 0;
 InspectionResultWord := 0;
@@ -224,7 +231,7 @@ END_IF;
 ShipmentWasHigh := ShipmentDetected;
 IF M0 AND (ProducedCount >= TargetQuantity) AND (ShippedCount >= TargetQuantity)
    AND (LaunchedCount <= ProducedCount + RejectCount) THEN
-  M0 := FALSE; DrainActive := TRUE; DrainCycles := 0;
+  M0 := FALSE; RunLatch := FALSE; DrainActive := TRUE; DrainCycles := 0;
 END_IF;
 IF DrainActive THEN
   DrainCycles := DrainCycles + 1;
@@ -248,6 +255,8 @@ PackStart := M0 AND (PackingPhase = 1) AND NOT M13;
 FinishedGoodsConveyorRun := M0 OR DrainActive;
 ShippingConveyorRun := M0 OR DrainActive;
 AlarmLamp := FaultCode <> 0;
+PermitLamp := MesPermit AND NOT RunLatch AND (WorkOrderActive = 1) AND (ShippedCount < TargetQuantity);
+RunLamp := M0;
 TruckLoadVisual := ShippedCount;
 TruckTargetVisual := TargetQuantity;
 BodyStockVisual := BodyStockDisplay;
@@ -257,6 +266,7 @@ IF (ProducedCount >= TargetQuantity) AND (ShippedCount >= TargetQuantity) THEN
   MachineState := 6;
 ELSIF FaultCode <> 0 THEN MachineState := 5;
 ELSIF M0 THEN MachineState := 2;
-ELSIF StopPB THEN MachineState := 4;
+ELSIF MesPermit AND (WorkOrderActive = 1) THEN MachineState := 3; (* 허가됨, 현장 시작 대기 *)
+ELSIF StopPB OR HmiStop THEN MachineState := 4;
 ELSE MachineState := 1; END_IF;
 

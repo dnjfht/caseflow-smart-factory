@@ -1,29 +1,60 @@
-import { lazy, Suspense, useState } from 'react'
+import { useState } from 'react'
 import type { Data } from './App'
-import { n, s } from './App'
+import { s } from './App'
+import { TwinSlot } from './TwinHost'
+import { isStaticSite, twin, useTwinTags } from './twin'
 
 import './LiveScene.css'
 
-const FactoryTwin3D = lazy(() => import('./FactoryTwin3D'))
+const STATE: Record<number, string> = { 1: '대기 (MES 허가 없음)', 2: '가동 중', 3: 'MES 허가됨 · 현장 시작 대기', 4: '현장 정지', 5: '고장', 6: '목표 수량 완료' }
 
-export default function LiveScene({data,onUpdate}:{data:Data;onUpdate:()=>Promise<unknown>}){
-  const [busy,setBusy]=useState(false)
-  const [notice,setNotice]=useState('')
-  const active=data.orders.find(order=>['RUNNING','PAUSED'].includes(s(order,'STATUS')))
-  const state=active?s(active,'STATUS'):'대기'
-  async function command(action:'pause'|'resume'){
-    if(!active)return
-    setBusy(true);setNotice('')
-    try{
-      const response=await fetch(`/api/orders/${n(active,'ID')}/${action}`,{method:'POST'})
-      if(!response.ok){const error=await response.json().catch(()=>({}));throw Error(error.detail||error.message||`HTTP ${response.status}`)}
-      await onUpdate()
-      setNotice(action==='pause'?'현장 정지 명령을 보냈습니다.':'현장 재가동 명령을 보냈습니다.')
-    }catch(error){setNotice(error instanceof Error?error.message:String(error))}
-    finally{setBusy(false)}
+/** The line as the person on the floor sees it: the 3D twin, and the operator panel next to it. */
+export default function LiveScene({ data }: { data: Data; onUpdate: () => Promise<unknown> }) {
+  const { ready, tags } = useTwinTags(400)
+  const [notice, setNotice] = useState('')
+  const active = data.orders.find(order => ['RUNNING', 'PAUSED'].includes(s(order, 'STATUS')))
+  const permit = tags.MesPermit === true
+  const running = tags.M0 === true
+  const state = Number(tags.MachineState ?? 0)
+  const num = (k: string) => Number(tags[k] ?? 0)
+  async function press(key: 'HmiStart' | 'HmiStop') {
+    const t = twin()
+    if (!t) return
+    setNotice('')
+    await t.press(key)
+    if (key === 'HmiStart' && !t.tags().MesPermit) setNotice('MES 가동 허가가 없어 시작되지 않았습니다. 작업 지시에서 가동을 허가하세요.')
   }
-  return <section className="card live-scene"><div className="op-title"><div><small>LIVE FACTORY</small><h2>3D 현장 · 설비 운전</h2></div><span>현장 상태 연동</span></div>
-    <Suspense fallback={<div className="live-scene-loading">현장 화면 연결 중…</div>}><FactoryTwin3D/></Suspense><div className="live-scene-controls"><strong>{active?s(active,'ORDER_CODE'):'진행 중인 작업 없음'}</strong><span>작업 상태 {state}</span><span>투입 {data.plc.launched} · 불량 {data.plc.rejected} · 포장 {data.plc.packed} · 출구 {data.plc.lineExit}</span><span>제어기 {data.plc.connected?'연결됨':'연결 끊김'}</span><div className="live-scene-buttons"><button disabled={busy||state!=='RUNNING'} onClick={()=>command('pause')}>현장 정지</button><button disabled={busy||state!=='PAUSED'} onClick={()=>command('resume')}>재가동</button><a href="#orders">작업지시 보기</a></div>{notice&&<p role="status">{notice}</p>}</div><p className="fine">설비와 제품의 현재 위치를 현장 제어기에서 수신합니다. 화면을 드래그하거나 확대하여 확인할 수 있습니다.</p>
+  function demoPermit(on: boolean) {
+    twin()?.write('MesPermit', on)
+    setNotice(on ? '공개 시연용 허가를 냈습니다. 현장 시작 버튼을 누르세요.' : '허가를 해제했습니다.')
+  }
+  return <section className="card live-scene">
+    <div className="op-title"><div><small>LIVE FACTORY · WEB TWIN</small><h2>3D 현장 · 현장 조작반</h2></div><span>{ready ? '가상 공정 가동 중' : '가상 공정 불러오는 중'}</span></div>
+    <div className="live-scene-layout">
+      <TwinSlot view="overview" />
+      <div className="field-panel">
+        <div className="field-panel-head"><strong>현장 조작반</strong><small>{active ? s(active, 'ORDER_CODE') : '진행 중인 작업 없음'}</small></div>
+        <div className="field-lamps">
+          <div className={permit ? 'lamp on green' : 'lamp'}><i />MES 허가</div>
+          <div className={running ? 'lamp on blue' : 'lamp'}><i />운전</div>
+          <div className={tags.AlarmLamp === true ? 'lamp on red' : 'lamp'}><i />알람</div>
+        </div>
+        <p className="field-state">{ready ? STATE[state] ?? `상태 ${state}` : '현장 제어기 연결 대기'}</p>
+        <div className="field-buttons">
+          <button className="pb start" disabled={!ready || running} onClick={() => press('HmiStart')}>시작</button>
+          <button className="pb stop" disabled={!ready || !running} onClick={() => press('HmiStop')}>정지</button>
+        </div>
+        <dl className="field-counts">
+          <div><dt>목표</dt><dd>{num('TargetQuantity')}</dd></div>
+          <div><dt>투입</dt><dd>{num('LaunchedCount')}</dd></div>
+          <div><dt>불량</dt><dd>{num('RejectCount')}</dd></div>
+          <div><dt>포장</dt><dd>{num('ProducedCount')}</dd></div>
+          <div><dt>출하</dt><dd>{num('ShippedCount')}</dd></div>
+        </dl>
+        {isStaticSite && <div className="field-demo"><small>공개 시연 · MES 서버 없이 실행 중</small><div><button disabled={!ready || permit} onClick={() => demoPermit(true)}>MES 허가 (시연)</button><button disabled={!ready || !permit} onClick={() => demoPermit(false)}>허가 해제</button></div></div>}
+        {notice && <p className="field-notice" role="status">{notice}</p>}
+      </div>
+    </div>
+    <p className="fine">MES는 가동을 허가만 합니다. 허가가 있을 때 현장의 시작 버튼(3D 화면의 초록 버튼 또는 이 조작반)을 눌러야 공정이 돌고, 정지 버튼·허가 해제·목표 달성 시 멈춥니다. 3D 화면은 드래그로 회전, 휠로 확대할 수 있습니다.</p>
   </section>
 }
-

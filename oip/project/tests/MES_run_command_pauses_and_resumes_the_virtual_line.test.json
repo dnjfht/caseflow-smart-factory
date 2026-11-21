@@ -4,17 +4,37 @@
   "inputs": [
     {
       "at": 0,
-      "tag": "MesStop",
+      "tag": "MesPermit",
+      "value": true
+    },
+    {
+      "at": 0.1,
+      "tag": "HmiStart",
+      "value": true
+    },
+    {
+      "at": 0.4,
+      "tag": "HmiStart",
       "value": false
     },
     {
       "at": 5,
-      "tag": "MesStop",
-      "value": true
+      "tag": "MesPermit",
+      "value": false
     },
     {
       "at": 15,
-      "tag": "MesStop",
+      "tag": "MesPermit",
+      "value": true
+    },
+    {
+      "at": 15.1,
+      "tag": "HmiStart",
+      "value": true
+    },
+    {
+      "at": 15.4,
+      "tag": "HmiStart",
       "value": false
     }
   ],

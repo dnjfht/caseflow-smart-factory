@@ -679,7 +679,7 @@
     },
     {
       "id": "StartButton",
-      "name": "Start PB IX0.0",
+      "name": "Start PB IX0.0 (허가 시 점등)",
       "parent": "BodyConveyor",
       "type": "part",
       "packageId": "oip.push-button",
@@ -691,15 +691,15 @@
       "rotationY": 3.141593,
       "params": {
         "emergencyStop": false,
-        "text": "STOP",
+        "text": "START",
         "buttonColor": "#18aa4a",
         "momentary": true,
         "startPressed": false,
         "startStruck": false,
         "normallyClosed": false,
-        "lampSource": "press",
+        "lampSource": "tag",
         "tag": "%IX0.0",
-        "lampTag": ""
+        "lampTag": "%QX2.1"
       }
     },
     {

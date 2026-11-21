@@ -1292,7 +1292,7 @@ PROGRAM main
             },
             "numericId": "5477535",
             "variable": {
-              "name": " StartPB"
+              "name": "StartPB"
             },
             "executionOrder": 0,
             "draggable": true,

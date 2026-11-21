@@ -49,7 +49,7 @@ public class OpcUaGateway {
                 number("TargetQuantity"), number("LaunchedCount"), number("RejectCount"),
                 number("ProducedCount"), number("ShippedCount"), number("MachineState"),
                 number("AssemblyPhase"), number("InspectionPhase"), number("PackingPhase"),
-                (Boolean) read("MesStop"), (Boolean) read("BodyConveyorRun"),
+                !((Boolean) read("MesPermit")), (Boolean) read("BodyConveyorRun"),
                 (Boolean) read("BodyStopper"), (Boolean) read("LidStopper"),
                 (Boolean) read("RejectDiverter"));
         } catch (Exception e) {
@@ -66,8 +66,9 @@ public class OpcUaGateway {
         } catch (Exception e) { resetClient(); throw e; }
     }
 
+    /** MES는 가동 허가만 내린다. 허가가 있어도 현장 시작 버튼(StartPB/HmiStart)을 눌러야 공정이 돈다. */
     public void stop(boolean stopped) throws Exception {
-        write("MesStop", stopped);
+        write("MesPermit", !stopped);
     }
 
     public void target(int quantity) throws Exception {

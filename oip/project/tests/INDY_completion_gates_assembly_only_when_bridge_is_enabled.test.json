@@ -4,13 +4,23 @@
   "inputs": [
     {
       "at": 0,
-      "tag": "MesStop",
-      "value": false
+      "tag": "MesPermit",
+      "value": true
     },
     {
       "at": 0,
       "tag": "IndyBridgeEnabled",
       "value": true
+    },
+    {
+      "at": 0.1,
+      "tag": "HmiStart",
+      "value": true
+    },
+    {
+      "at": 0.4,
+      "tag": "HmiStart",
+      "value": false
     },
     {
       "at": 20,

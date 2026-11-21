@@ -21,6 +21,7 @@
   ],
   "stScanMs": 10,
   "tests": [
+    "tests/Field_start_button_runs_only_with_MES_permit.test.json",
     "tests/Three_accepted_cases_with_rejected_replacements_and_overlapping_assembly.test.json",
     "tests/MES_run_command_pauses_and_resumes_the_virtual_line.test.json",
     "tests/MES_material_shortage_holds_new_feed_while_existing_product_finishes.test.json",

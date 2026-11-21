@@ -1,0 +1,268 @@
+diff --git a/src/editor/App.tsx b/src/editor/App.tsx
+index 040f563..cc418b5 100644
+--- a/src/editor/App.tsx
++++ b/src/editor/App.tsx
+@@ -968,7 +968,7 @@ export function App({ store, sim }: AppProps) {
+       const pkgSource = connectDesktopPackages(store)
+       // Desktop only: serve the agent tools to the shell's MCP server (agent/desktopAgent.ts, docs/agent-tools.md)
+       const stopAgent = connectDesktopAgent(store, ctrl, setAgentSession)
+-      if (import.meta.env.DEV || new URLSearchParams(location.search).has('hook')) {
++      if (import.meta.env.DEV || new URLSearchParams(location.search).get('scene') === 'caseflow' || new URLSearchParams(location.search).has('hook')) {
+         const hook = (window.__oip ??= {})
+         Object.assign(hook, {
+           view: v,
+diff --git a/src/editor/caseflow/bridge.ts b/src/editor/caseflow/bridge.ts
+new file mode 100644
+index 0000000..d6cf203
+--- /dev/null
++++ b/src/editor/caseflow/bridge.ts
+@@ -0,0 +1,185 @@
++// CaseFlow twin bridge (this fork's only addition to the simulator).
++//
++// With ?scene=caseflow the editor boots straight into the CaseFlow case-assembly line (public/caseflow/caseflow.oip),
++// starts the simulation, and publishes `window.caseflow`: a small API the CaseFlow MES page (same origin, the twin
++// sits in an <iframe>) uses to read PLC tags and to act on the line the way a person on the shop floor would -
++// the field start/stop buttons and the robot's teach pendant. The MES itself only grants a permit (MesPermit);
++// the line runs only after a start button is pressed (plc/program.st).
++import type { EditorStore } from '../store/store'
++import type { SimClient } from '../../sim/client'
++import type { PartInstance, SceneJSON } from '../../core/types'
++
++type Controller = {
++  run(): void
++  writePlcValue(key: string, text: string): string | null
++  forcePlcValue(key: string, text?: string): string | null
++  releasePlcForces(key?: string): void
++  previewRigPose(partId: string, row: readonly number[]): void
++}
++type CameraPose = { px: number; py: number; pz: number; tx: number; ty: number; tz: number }
++type Hook = { controller?: Controller; view?: { setCameraPose(p: CameraPose, o?: { instant?: boolean }): void } }
++
++/** camera presets for the MES page: the whole line, and the assembly robot up close */
++export const VIEWS: Record<string, CameraPose> = {
++  overview: { px: 9, py: 12.5, pz: 18, tx: 11.7, ty: 0.4, tz: 1.2 },
++  robot: { px: 5.6, py: 3.2, pz: 4.4, tx: 3.2, ty: 0.9, tz: 0.6 },
++  shipping: { px: 24, py: 5, pz: 7, tx: 21, ty: 0.8, tz: 0 },
++}
++
++export const ROBOT_ID = 'AssemblyRobot'
++/** waypoint row the pendant's jog moves use, and the job that moves there (appended after the production jobs) */
++const JOG_NAME = 'JOG'
++/** joint limits in degrees, from the six-axis robot's rig (parts/oip.six-axis-robot) */
++export const JOINT_LIMITS: [number, number][] = [[-180, 180], [-135, 135], [-160, 160], [-180, 180], [-120, 120], [-360, 360]]
++
++const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
++const clampRow = (row: readonly number[]): number[] =>
++  row.slice(0, 6).map((v, i) => {
++    const [lo, hi] = JOINT_LIMITS[i] ?? [-180, 180]
++    return Math.min(hi, Math.max(lo, Math.round(Number(v) * 100) / 100))
++  })
++
++export function isCaseflowBoot(): boolean {
++  return new URLSearchParams(location.search).get('scene') === 'caseflow'
++}
++
++export async function fetchCaseflowArchive(): Promise<Uint8Array | null> {
++  try {
++    const res = await fetch('/caseflow/caseflow.oip', { cache: 'no-cache' })
++    return res.ok ? new Uint8Array(await res.arrayBuffer()) : null
++  } catch {
++    return null
++  }
++}
++
++export function installCaseflowBridge(store: EditorStore, sim: SimClient): void {
++  const w = window as unknown as { __oip?: Hook; caseflow?: unknown }
++  const ctrl = (): Controller | null => w.__oip?.controller ?? null
++  const robot = (): PartInstance | undefined => store.getState().scene.parts.find((p) => p.id === ROBOT_ID)
++  const tags = (): Record<string, unknown> => ({ ...(sim.plcState?.watch ?? {}) })
++  const lineRunning = (): boolean => tags().M0 === true
++  let busy = false
++
++  /** Replace the robot's params as one authoring edit (an undo step, and the run picks it up live). */
++  const setRobotParams = (patch: Record<string, unknown>, label: string): void => {
++    const scene = store.getState().scene
++    const next: SceneJSON = { ...scene, parts: scene.parts.map((p) => (p.id === ROBOT_ID ? ({ ...p, params: { ...p.params, ...patch } } as PartInstance) : p)) }
++    store.commit(label, next)
++  }
++  const program = (): { waypoints: number[][]; names: string[]; jobs: number[][]; jobNames: string[] } => {
++    const p = (robot()?.params ?? {}) as Record<string, unknown>
++    return {
++      waypoints: ((p.waypoints as number[][]) ?? []).map((r) => [...r]),
++      names: String(p.waypointNames ?? '').split('\n'),
++      jobs: ((p.jobs as number[][]) ?? []).map((r) => [...r]),
++      jobNames: String(p.jobNames ?? '').split('\n'),
++    }
++  }
++  /** Ensure the JOG waypoint and a one-step job moving to it exist; returns the job number (1-based). */
++  const ensureJogJob = (row: number[]): number => {
++    const pr = program()
++    let wi = pr.names.indexOf(JOG_NAME)
++    if (wi < 0) {
++      wi = pr.waypoints.length
++      pr.waypoints.push(row)
++      pr.names[wi] = JOG_NAME
++    } else pr.waypoints[wi] = row
++    let ji = pr.jobNames.indexOf('Jog')
++    const jobCount = Math.max(0, ...pr.jobs.map((r) => (r[0] ?? 0) + 1))
++    if (ji < 0) {
++      ji = jobCount
++      pr.jobNames[ji] = 'Jog'
++      pr.jobs.push([ji, 1, wi, 0])
++    }
++    setRobotParams({ waypoints: pr.waypoints, waypointNames: pr.names.join('\n'), jobs: pr.jobs, jobNames: pr.jobNames.join('\n') }, 'Teach pendant jog')
++    return ji + 1
++  }
++  /** Run one robot job outside production: hold the PLC's robot command, raise Execute, wait for Done. */
++  const runJob = async (job: number, timeoutMs = 20000): Promise<string | null> => {
++    const c = ctrl()
++    if (!c) return '시뮬레이터 준비 중입니다.'
++    if (lineRunning()) return '공정 가동 중에는 수동 조작이 잠깁니다. 현장 정지 후 사용하세요.'
++    busy = true
++    try {
++      c.forcePlcValue('RobotCommand', String(job))
++      c.forcePlcValue('RobotStart', 'FALSE')
++      await sleep(150)
++      c.forcePlcValue('RobotStart', 'TRUE')
++      await sleep(400)
++      const t0 = performance.now()
++      while (performance.now() - t0 < timeoutMs) {
++        if (tags().RobotReady === true) break
++        await sleep(100)
++      }
++      return null
++    } finally {
++      c.releasePlcForces('RobotStart')
++      c.releasePlcForces('RobotCommand')
++      busy = false
++    }
++  }
++
++  const api = {
++    ready: false,
++    tags,
++    lineRunning,
++    busy: () => busy,
++    view: (name: string, instant = false): void => {
++      const pose = VIEWS[name]
++      if (pose) w.__oip?.view?.setCameraPose(pose, { instant })
++    },
++    /** BOOL/INT write of a program input (MesPermit, HmiStart, ...), as an operator panel would */
++    write: (key: string, value: boolean | number): string | null => ctrl()?.writePlcValue(key, String(value).toUpperCase()) ?? 'not ready',
++    /** a momentary press of an HMI button tag */
++    press: async (key: 'HmiStart' | 'HmiStop'): Promise<void> => {
++      ctrl()?.writePlcValue(key, 'TRUE')
++      await sleep(300)
++      ctrl()?.writePlcValue(key, 'FALSE')
++    },
++    robot: {
++      limits: JOINT_LIMITS,
++      /** current joint angles in degrees, from the latest sim frame (null before the first frame) */
++      joints(): number[] | null {
++        const rec = (sim as unknown as { frameWire?: { records?: { joints?: Record<string, Record<string, number>> } } }).frameWire?.records?.joints?.[ROBOT_ID]
++        if (!rec) return null
++        return ['j1', 'j2', 'j3', 'j4', 'j5', 'j6'].map((j) => Math.round(((rec[j] ?? 0) * 180) / Math.PI * 100) / 100)
++      },
++      program,
++      /** move the arm to a joint row (degrees) as a jog: limited to the joint ranges, refused while the line runs */
++      jogTo: async (row: number[]): Promise<string | null> => {
++        if (lineRunning()) return '공정 가동 중에는 수동 조작이 잠깁니다.'
++        const job = ensureJogJob(clampRow(row))
++        await sleep(120)
++        return runJob(job)
++      },
++      runJob,
++      /** write the taught waypoints and the production job back into the line (what the PLC runs from now on) */
++      apply: (p: { waypoints: number[][]; names: string[]; steps: number[][] }): string | null => {
++        if (lineRunning()) return '공정 가동 중에는 프로그램을 바꿀 수 없습니다.'
++        const cur = program()
++        const jogJobs = cur.jobs.filter((r) => r[0] !== 0)
++        setRobotParams(
++          {
++            waypoints: p.waypoints.map(clampRow),
++            waypointNames: p.names.join('\n'),
++            jobs: [...p.steps.map((s) => [0, s[1], s[2], s[3] ?? 0]), ...jogJobs],
++          },
++          'Teach pendant: apply program',
++        )
++        return null
++      },
++    },
++  }
++  w.caseflow = api
++
++  // Play as soon as the editor's controller is up: the twin is a running line, not a document being edited.
++  const started = setInterval(() => {
++    const c = ctrl()
++    if (!c) return
++    clearInterval(started)
++    if (!store.getState().running) c.run()
++    api.ready = true
++    setTimeout(() => api.view('overview', true), 800)
++    window.parent?.postMessage({ type: 'caseflow:ready' }, location.origin)
++  }, 300)
++}
+diff --git a/src/editor/main.tsx b/src/editor/main.tsx
+index 263a448..a2a3268 100644
+--- a/src/editor/main.tsx
++++ b/src/editor/main.tsx
+@@ -57,6 +57,9 @@ import { onLocalAssetsStored, supportsLocalAssets, sweepLocalAssets } from './pr
+ import { startSplitFiling } from './project/projectSplit'
+ import { currentDocumentId } from './project/documentStore'
+ import { EditorStore } from './store/store'
++import { fetchCaseflowArchive, installCaseflowBridge, isCaseflowBoot } from './caseflow/bridge'
++import { oipBytesToProject } from '../core/project/projectArchive'
++import { bakePart } from './parts/bakePart'
+ import { liveChannel } from './live/liveChannel'
+ import { followTarget, type FollowTarget } from './live/followTarget'
+ import { registerRoomEntry } from './roomEntry'
+@@ -538,7 +541,7 @@ async function bootRoom(resolved: ResolvedRoom, seedHere: SeedKind | null = null
+ }
+ 
+ function mount(): void {
+-  if (import.meta.env.DEV || new URLSearchParams(location.search).has('hook')) {
++  if (import.meta.env.DEV || isCaseflowBoot() || new URLSearchParams(location.search).has('hook')) {
+     const hook = (window.__oip ??= {})
+     // getPartThumbnails + getBundledThumbnails are exposed for the offline thumbnail generator (npm run
+     // thumbnails): the first bakes the built-in cards, the second the first-party bundled custom-part cards
+@@ -673,8 +676,17 @@ function startSolo(): void {
+     }
+   })
+   watchOtherTabs()
+-  const boot = (): void => {
+-    bootSolo()
++  const boot = async (): Promise<void> => {
++    // CaseFlow twin: open the case-assembly line itself (the project folder, zipped), never a saved document
++    const caseflow = isCaseflowBoot() ? await fetchCaseflowArchive() : null
++    const parsed = caseflow ? await oipBytesToProject(caseflow, { bakePart }) : null
++    if (parsed && parsed.ok) {
++      registerBundledPackages()
++      store.loadProject(parsed.project)
++    } else {
++      if (caseflow) console.error('[caseflow] the line could not be opened', parsed)
++      bootSolo()
++    }
+     // an older multi-scene project's other scenes, parked by the boot: filed now (projectSplit.ts); the folder sync
+     // waits for it (App.tsx)
+     startSplitFiling(store)
+@@ -682,6 +694,7 @@ function startSolo(): void {
+     // handshake + React mount that emits them today (~2.6 s of idle link under WebGPU).
+     prefetchSceneAssets(store.getState().scene)
+     void xremu.then(mount).catch((e: unknown) => console.error('[oip] the editor failed to mount', e))
++    if (isCaseflowBoot()) installCaseflowBridge(store, sim)
+   }
+   // the working copy is the open document's library row, read before the boot (projectFile.openWorkingCopy)
+   void openWorkingCopy()
+diff --git a/vite.config.ts b/vite.config.ts
+index fdf39ce..9d71d15 100644
+--- a/vite.config.ts
++++ b/vite.config.ts
+@@ -213,6 +213,8 @@ export default defineConfig({
+     // dist/THIRD_PARTY_LICENSES.txt: the license text of every package in the output (scripts/lib/bundled-licenses.mjs)
+     bundledLicenses({ emit: true }),
+     VitePWA({
++      // CaseFlow twin build: no service worker (it would take over the whole host, MES pages included)
++      disable: process.env.CASEFLOW_TWIN === '1',
+       // 'prompt' (not autoUpdate): we never silently reload out from under an in-progress
+       // edit / collab session. A new deploy surfaces a "Reload" toast (UpdatePrompt) the user
+       // clicks when ready. injectRegister:false because we register manually in UpdatePrompt

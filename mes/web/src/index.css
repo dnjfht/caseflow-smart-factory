@@ -1,6 +1,6 @@
 html{scroll-behavior:smooth}
 body[data-demo='true']::after {
-  content: '공개 미리보기 · 저장된 예시 데이터 · 현장 제어는 로컬 MES에서 사용';
+  content: '공개 시연 · 3D 가상 공정과 PLC는 이 브라우저 안에서 동작 · MES 기록은 예시 데이터';
   position: fixed;
   z-index: 10000;
   bottom: 12px;
