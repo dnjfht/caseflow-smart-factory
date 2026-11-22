@@ -89,12 +89,15 @@ const session = Math.random().toString(36).slice(2)
 let lastReset: number | null = null
 let lastProgram: number | null = null
 
+/** the arm on the line; a stored program taught on another arm (the earlier six-axis robot) is not applied to it */
+export const ROBOT_MODEL = 'neuromeka.indy7'
+
 /** the robot program last applied on any pendant, from the MES database */
 export async function loadRobotProgram(t: CaseflowApi) {
   const r = await fetch('/api/twin/robot-program')
   if (!r.ok) return
-  const body = await r.json() as { program?: { waypoints: number[][]; names: string[]; steps: number[][] } }
-  if (body.program && !t.lineRunning()) t.robot.apply(body.program)
+  const body = await r.json() as { program?: { waypoints: number[][]; names: string[]; steps: number[][]; model?: string } }
+  if (body.program && body.program.model === ROBOT_MODEL && !t.lineRunning()) t.robot.apply(body.program)
 }
 
 export function startTwinSync() {

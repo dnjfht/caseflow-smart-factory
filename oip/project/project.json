@@ -5,7 +5,6 @@
     "parts/oip.belt-conveyor",
     "parts/oip.box-spawner",
     "parts/oip.box",
-    "parts/oip.six-axis-robot",
     "parts/oip.push-button",
     "parts/oip.diffuse-sensor",
     "parts/oip.blade-stop",
@@ -13,7 +12,9 @@
     "parts/factory.case-cell",
     "parts/oip.despawner",
     "parts/factory.stock-display",
-    "parts/factory.dispatch-truck"
+    "parts/factory.dispatch-truck",
+    "parts/neuromeka.indy7",
+    "parts/oip.shape"
   ],
   "scene": "scene.json",
   "program": [

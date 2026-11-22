@@ -10,6 +10,7 @@
 // It keeps OIP's simulation playing. No dependencies: Node 18 or newer.
 
 const SERVER = (process.argv[2] ?? process.env.CASEFLOW_MES ?? 'https://caseflow-mes-api.onrender.com').replace(/\/$/, '')
+const ROBOT_MODEL = 'neuromeka.indy7'
 const OIP = process.env.OIP_MCP_URL ?? 'http://127.0.0.1:5189/mcp'
 const ROBOT = 'AssemblyRobot'
 const TAGS = ['M0', 'RunLatch', 'MesPermit', 'MesMaterialPermit', 'WorkOrderActive', 'TargetQuantity', 'MachineState', 'FaultCode',
@@ -52,6 +53,8 @@ async function applyRobotProgram() {
   const body = await mes('/api/twin/robot-program')
   const p = body.program
   if (!p?.waypoints || !p?.steps) return
+  // poses taught on another arm (the earlier six-axis robot) mean nothing on the Indy7
+  if (p.model !== ROBOT_MODEL) return
   // the pendant's JOG pose and job are the browser's own; production uses the taught poses and job 1
   const keep = p.names.map((n, i) => (n === 'JOG' ? -1 : i)).filter((i) => i >= 0)
   const waypoints = keep.map((i) => p.waypoints[i])

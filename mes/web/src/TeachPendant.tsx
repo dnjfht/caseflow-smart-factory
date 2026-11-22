@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { TwinSlot } from './TwinHost'
-import { isStaticSite, twin, useTwinLink, useTwinTags } from './twin'
+import { ROBOT_MODEL, isStaticSite, twin, useTwinLink, useTwinTags } from './twin'
 import './TeachPendant.css'
 
 // A teach pendant for the line's assembly robot, laid out like a cobot app: jog each joint, store poses as
 // waypoints, arrange the job's steps, try the job by hand, then apply it to production. The robot is the twin's
-// six-axis arm; its job 1 ("Assemble") is what the PLC runs on every case (RobotCommand = 1, RobotStart pulse).
+// Neuromeka Indy7 arm (imported from its URDF); its job 1 ("Assemble") is what the PLC runs on every case (RobotCommand = 1, RobotStart pulse).
 
 const MOVE = 1, VACUUM = 2, WAIT = 3, WAIT_FOR = 4, SET_OUT = 5
 const OP_LABEL: Record<number, string> = { [MOVE]: '이동', [VACUUM]: '흡착', [WAIT]: '대기', [WAIT_FOR]: '입력 대기', [SET_OUT]: '신호 출력' }
@@ -91,7 +91,7 @@ export default function TeachPendant() {
     if (err) return err
     setDirty(false)
     // kept in the MES database, so the next session (anyone's) starts from this program
-    if (!isStaticSite) void fetch('/api/twin/robot-program', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...prog, savedBy: 'MES 티치펜던트' }) })
+    if (!isStaticSite) void fetch('/api/twin/robot-program', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...prog, savedBy: 'MES 티치펜던트', model: ROBOT_MODEL }) })
     return null
   })
   const testRun = () => act('조립 작업 1회 시험 실행을 마쳤습니다.', () => twin()?.robot.runJob(1) ?? '시뮬레이터 준비 중입니다.')
@@ -101,7 +101,7 @@ export default function TeachPendant() {
   const visible = prog ? prog.names.map((n, i) => ({ n, i })).filter(x => x.n !== JOG_NAME && x.i < prog.waypoints.length) : []
 
   return <section className="card pendant">
-    <div className="op-title"><div><small>COBOT TEACH PENDANT</small><h2>협동로봇 티치펜던트</h2></div>
+    <div className="op-title"><div><small>COBOT TEACH PENDANT</small><h2>협동로봇 티치펜던트 · Indy7</h2></div>
       <span className={running ? 'mode auto' : 'mode manual'}>{running ? 'AUTO · 공정 가동 중 (수동 잠금)' : 'MANUAL · 수동 조작 가능'}</span></div>
     <div className="pendant-layout">
       <TwinSlot view="robot" className="pendant-view" />

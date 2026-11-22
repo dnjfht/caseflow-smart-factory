@@ -1,0 +1,611 @@
+{
+  "id": "neuromeka.indy7",
+  "name": "Neuromeka Indy7",
+  "category": "Equipment",
+  "geometry": {
+    "kind": "rig",
+    "links": [
+      {
+        "name": "world",
+        "shape": {
+          "kind": "frame"
+        },
+        "offset": [
+          0,
+          0,
+          0
+        ],
+        "quat": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      {
+        "name": "link0",
+        "parent": "world",
+        "shape": {
+          "kind": "mesh",
+          "asset": "urdf",
+          "node": "link0"
+        },
+        "offset": [
+          0,
+          0,
+          0
+        ],
+        "quat": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "name": "link1",
+        "parent": "link0",
+        "shape": {
+          "kind": "mesh",
+          "asset": "urdf",
+          "node": "link1"
+        },
+        "offset": [
+          0,
+          0,
+          0.0775
+        ],
+        "quat": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "name": "link2",
+        "parent": "link1",
+        "shape": {
+          "kind": "mesh",
+          "asset": "urdf",
+          "node": "link2"
+        },
+        "offset": [
+          0,
+          -0.109,
+          0.222
+        ],
+        "quat": [
+          0.5,
+          0.5,
+          -0.5000000001025517,
+          0.4999999998974482
+        ]
+      },
+      {
+        "name": "link3",
+        "parent": "link2",
+        "shape": {
+          "kind": "mesh",
+          "asset": "urdf",
+          "node": "link3"
+        },
+        "offset": [
+          -0.45,
+          0,
+          -0.0305
+        ],
+        "quat": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "name": "link4",
+        "parent": "link3",
+        "shape": {
+          "kind": "mesh",
+          "asset": "urdf",
+          "node": "link4"
+        },
+        "offset": [
+          -0.267,
+          0,
+          -0.075
+        ],
+        "quat": [
+          -0.5,
+          -0.5000000001025517,
+          0.5,
+          0.4999999998974482
+        ]
+      },
+      {
+        "name": "link5",
+        "parent": "link4",
+        "shape": {
+          "kind": "mesh",
+          "asset": "urdf",
+          "node": "link5"
+        },
+        "offset": [
+          0,
+          -0.114,
+          0.083
+        ],
+        "quat": [
+          0.5,
+          0.5,
+          -0.5000000001025517,
+          0.4999999998974482
+        ]
+      },
+      {
+        "name": "link6",
+        "parent": "link5",
+        "shape": {
+          "kind": "mesh",
+          "asset": "urdf",
+          "node": "link6"
+        },
+        "offset": [
+          -0.168,
+          0,
+          0.069
+        ],
+        "quat": [
+          -0.5,
+          -0.5000000001025517,
+          0.5,
+          0.4999999998974482
+        ]
+      },
+      {
+        "name": "tcp",
+        "parent": "link6",
+        "shape": {
+          "kind": "frame"
+        },
+        "offset": [
+          0,
+          0,
+          0.06
+        ],
+        "quat": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "name": "link0_collision",
+        "parent": "link0",
+        "shape": {
+          "kind": "box",
+          "size": [
+            0.2363,
+            0.205,
+            0.0775
+          ]
+        },
+        "offset": [
+          -0.0157,
+          0,
+          0.0418
+        ],
+        "quat": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "hidden": true
+      },
+      {
+        "name": "link1_collision",
+        "parent": "link1",
+        "shape": {
+          "kind": "box",
+          "size": [
+            0.15,
+            0.184,
+            0.296
+          ]
+        },
+        "offset": [
+          0,
+          -0.017,
+          0.15
+        ],
+        "quat": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "hidden": true
+      },
+      {
+        "name": "link2_collision",
+        "parent": "link2",
+        "shape": {
+          "kind": "box",
+          "size": [
+            0.575,
+            0.1511,
+            0.1865
+          ]
+        },
+        "offset": [
+          -0.2135,
+          0,
+          0.0627
+        ],
+        "quat": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "hidden": true
+      },
+      {
+        "name": "link3_collision",
+        "parent": "link3",
+        "shape": {
+          "kind": "box",
+          "size": [
+            0.315,
+            0.1002,
+            0.1265
+          ]
+        },
+        "offset": [
+          -0.1085,
+          0,
+          -0.0647
+        ],
+        "quat": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "hidden": true
+      },
+      {
+        "name": "link4_collision",
+        "parent": "link4",
+        "shape": {
+          "kind": "box",
+          "size": [
+            0.09,
+            0.1589,
+            0.1285
+          ]
+        },
+        "offset": [
+          0,
+          -0.0345,
+          0.0647
+        ],
+        "quat": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "hidden": true
+      },
+      {
+        "name": "link5_collision",
+        "parent": "link5",
+        "shape": {
+          "kind": "box",
+          "size": [
+            0.211,
+            0.09,
+            0.117
+          ]
+        },
+        "offset": [
+          -0.0615,
+          0,
+          0.06
+        ],
+        "quat": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "hidden": true
+      },
+      {
+        "name": "link6_collision",
+        "parent": "link6",
+        "shape": {
+          "kind": "box",
+          "size": [
+            0.09,
+            0.0905,
+            0.0605
+          ]
+        },
+        "offset": [
+          0,
+          0.0003,
+          0.0308
+        ],
+        "quat": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "hidden": true
+      },
+      {
+        "name": "toolMount",
+        "parent": "tcp",
+        "shape": {
+          "kind": "frame"
+        },
+        "offset": [
+          0,
+          0,
+          0
+        ],
+        "quat": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      {
+        "name": "gripper",
+        "parent": "toolMount",
+        "shape": {
+          "kind": "frame"
+        },
+        "offset": [
+          0,
+          -0.156672,
+          0
+        ],
+        "grip": {
+          "zone": {
+            "size": [
+              0.4,
+              0.7,
+              0.4
+            ],
+            "sizeParams": [
+              {
+                "axis": 0,
+                "param": "toolSizeX"
+              },
+              {
+                "axis": 2,
+                "param": "toolSizeZ"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "fingerA",
+        "parent": "toolMount",
+        "shape": {
+          "kind": "frame"
+        },
+        "offset": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "fingerB",
+        "parent": "toolMount",
+        "shape": {
+          "kind": "frame"
+        },
+        "offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "joints": [
+      {
+        "name": "joint0",
+        "link": "link1",
+        "type": "revolute",
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "min": -3.0543261909900767,
+        "max": 3.0543261909900767
+      },
+      {
+        "name": "joint1",
+        "link": "link2",
+        "type": "revolute",
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "min": -3.0543261909900767,
+        "max": 3.0543261909900767
+      },
+      {
+        "name": "joint2",
+        "link": "link3",
+        "type": "revolute",
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "min": -3.0543261909900767,
+        "max": 3.0543261909900767
+      },
+      {
+        "name": "joint3",
+        "link": "link4",
+        "type": "revolute",
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "min": -3.0543261909900767,
+        "max": 3.0543261909900767
+      },
+      {
+        "name": "joint4",
+        "link": "link5",
+        "type": "revolute",
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "min": -3.0543261909900767,
+        "max": 3.0543261909900767
+      },
+      {
+        "name": "joint5",
+        "link": "link6",
+        "type": "revolute",
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "min": -3.7524578917878086,
+        "max": 3.7524578917878086
+      },
+      {
+        "name": "toolGrip",
+        "link": "fingerA",
+        "type": "prismatic",
+        "axis": [
+          1,
+          0,
+          0
+        ],
+        "min": -0.05,
+        "max": 0.05,
+        "cosmetic": true
+      },
+      {
+        "name": "toolGrip2",
+        "link": "fingerB",
+        "type": "prismatic",
+        "axis": [
+          -1,
+          0,
+          0
+        ],
+        "min": -0.05,
+        "max": 0.05,
+        "mimic": {
+          "joint": "toolGrip"
+        }
+      }
+    ],
+    "posable": true,
+    "tool": "tcp",
+    "bounds": {
+      "length": 0.2363,
+      "width": 0.3674,
+      "top": 1.3285,
+      "bottom": 0.003,
+      "centerX": -0.0157,
+      "centerZ": 0.0812
+    }
+  },
+  "assets": [
+    {
+      "id": "urdf",
+      "mime": "model/gltf-binary",
+      "file": "assets/3bdd16fbe40b3cd9c37d2122e8a8badeb8759ad992b0fc2ac09108d8a454d31c.glb"
+    }
+  ],
+  "materials": [
+    {
+      "id": "eoatPaint",
+      "color": [
+        0.639,
+        0.116,
+        0.0066
+      ],
+      "metalness": 0,
+      "roughness": 0.55
+    },
+    {
+      "id": "eoatRail",
+      "color": [
+        0.04,
+        0.04,
+        0.045
+      ],
+      "metalness": 0.7,
+      "roughness": 0.35
+    },
+    {
+      "id": "eoatSteel",
+      "color": [
+        0.18,
+        0.18,
+        0.19
+      ],
+      "metalness": 0.85,
+      "roughness": 0.45
+    },
+    {
+      "id": "eoatCup",
+      "color": [
+        0.024,
+        0.104,
+        0.4
+      ],
+      "metalness": 0,
+      "roughness": 0.75
+    },
+    {
+      "id": "eoatPlastic",
+      "color": [
+        0.02,
+        0.02,
+        0.022
+      ],
+      "metalness": 0,
+      "roughness": 0.5
+    },
+    {
+      "id": "eoatLens",
+      "color": [
+        0.03,
+        0.06,
+        0.03
+      ],
+      "metalness": 0,
+      "roughness": 0.25
+    }
+  ],
+  "sdk": {
+    "level": 17,
+    "of": "v2:4962482:2bu6cbdk685"
+  }
+}

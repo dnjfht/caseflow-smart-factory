@@ -37,7 +37,8 @@ public class TwinController {
         return twin.syncField(request.tags());
     }
 
-    public record RobotProgram(List<List<Double>> waypoints, List<String> names, List<List<Double>> steps, String savedBy) { }
+    /** {@code model} is the robot package the poses were taught on (neuromeka.indy7): joint angles mean nothing on another arm */
+    public record RobotProgram(List<List<Double>> waypoints, List<String> names, List<List<Double>> steps, String savedBy, String model) { }
 
     @GetMapping("/robot-program")
     public Map<String, Object> robotProgram() {

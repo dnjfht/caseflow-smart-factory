@@ -13,10 +13,10 @@ index 040f563..cc418b5 100644
            view: v,
 diff --git a/src/editor/caseflow/bridge.ts b/src/editor/caseflow/bridge.ts
 new file mode 100644
-index 0000000..e188233
+index 0000000..af7a101
 --- /dev/null
 +++ b/src/editor/caseflow/bridge.ts
-@@ -0,0 +1,202 @@
+@@ -0,0 +1,204 @@
 +// CaseFlow twin bridge (this fork's only addition to the simulator).
 +//
 +// With ?scene=caseflow the editor boots straight into the CaseFlow case-assembly line (public/caseflow/caseflow.oip),
@@ -49,8 +49,8 @@ index 0000000..e188233
 +export const ROBOT_ID = 'AssemblyRobot'
 +/** waypoint row the pendant's jog moves use, and the job that moves there (appended after the production jobs) */
 +const JOG_NAME = 'JOG'
-+/** joint limits in degrees, from the six-axis robot's rig (parts/oip.six-axis-robot) */
-+export const JOINT_LIMITS: [number, number][] = [[-180, 180], [-135, 135], [-160, 160], [-180, 180], [-120, 120], [-360, 360]]
++/** joint limits in degrees: Neuromeka Indy7 (indy7.urdf, ±175° for J1-J5, ±215° for J6) */
++export const JOINT_LIMITS: [number, number][] = [[-175, 175], [-175, 175], [-175, 175], [-175, 175], [-175, 175], [-215, 215]]
 +
 +const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 +const clampRow = (row: readonly number[]): number[] =>
@@ -178,7 +178,9 @@ index 0000000..e188233
 +      joints(): number[] | null {
 +        const rec = (sim as unknown as { frameWire?: { records?: { joints?: Record<string, Record<string, number>> } } }).frameWire?.records?.joints?.[ROBOT_ID]
 +        if (!rec) return null
-+        return ['j1', 'j2', 'j3', 'j4', 'j5', 'j6'].map((j) => Math.round(((rec[j] ?? 0) * 180) / Math.PI * 100) / 100)
++        // joint names come from the robot's rig: joint0..joint5 on the imported Indy7, j1..j6 on OIP's own six-axis arm
++        const names = 'joint0' in rec ? ['joint0', 'joint1', 'joint2', 'joint3', 'joint4', 'joint5'] : ['j1', 'j2', 'j3', 'j4', 'j5', 'j6']
++        return names.map((j) => Math.round(((rec[j] ?? 0) * 180) / Math.PI * 100) / 100)
 +      },
 +      program,
 +      /** move the arm to a joint row (degrees) as a jog: limited to the joint ranges, refused while the line runs */

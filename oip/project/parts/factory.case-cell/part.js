@@ -33,10 +33,10 @@ definePart({
     return {
       links: [
         { name: 'main', shape: { kind: 'box', size: [0.72, 0.45, 0.72] }, offset: [0, 0.2, 0], color: [0.07, 0.4, 0.58], opacity: 0.2, collision: 'none', zone: { size: [0.72, 0.45, 0.72] } },
-        { name: 'secondary', shape: { kind: 'box', size: [0.72, 0.45, 0.72] }, offset: [0, 0.2, 2.4], color: [0.07, 0.4, 0.58], opacity: 0.2, collision: 'none', zone: { size: [0.72, 0.45, 0.72] } },
+        { name: 'secondary', shape: { kind: 'box', size: [0.72, 0.45, 0.72] }, offset: [0, 0.2, 1.3], color: [0.07, 0.4, 0.58], opacity: 0.2, collision: 'none', zone: { size: [0.72, 0.45, 0.72] } },
       ],
       joints: [],
-      bounds: { length: 0.72, width: 3.12, top: 0.45 },
+      bounds: { length: 0.72, width: 2.02, top: 0.45 },
     }
   },
   step(ctx) {
