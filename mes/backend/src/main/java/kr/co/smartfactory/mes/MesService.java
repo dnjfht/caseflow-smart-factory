@@ -201,6 +201,10 @@ public class MesService {
             switch (action) {
                 case "start" -> {
                     if (!state.equals("CREATED")) throw new ResponseStatusException(HttpStatus.CONFLICT, "CREATED 작업만 시작할 수 있습니다.");
+                    java.time.LocalDateTime due = plannedStart(id);
+                    if (due != null && java.time.LocalDateTime.now(clock).isBefore(due))
+                        throw new ResponseStatusException(HttpStatus.CONFLICT, "생산계획의 시작 예정 시각(" +
+                            due.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) + ") 이후에 가동을 허가할 수 있습니다.");
                     if (db.queryForObject("SELECT COUNT(*) FROM mes_order WHERE status IN ('RUNNING','PAUSED')", Integer.class) != 0)
                         throw new ResponseStatusException(HttpStatus.CONFLICT, "현재 가동 중인 작업을 완료하거나 정지한 후 시작하세요.");
                     if (!materialAvailable()) throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -245,6 +249,19 @@ public class MesService {
         } catch (ResponseStatusException e) { throw e; }
         catch (Exception e) { throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "PLC 쓰기 실패: " + e.getMessage(), e); }
         return order(id);
+    }
+
+    /** the factory's wall clock: plan dates and times are entered in local (Korean) time, the server runs in UTC */
+    java.time.Clock clock = java.time.Clock.system(java.time.ZoneId.of("Asia/Seoul"));
+
+    /** when the order's production plan is scheduled to start (a date without a time means that day's start), or null */
+    java.time.LocalDateTime plannedStart(long orderId) {
+        List<Map<String,Object>> rows = db.queryForList("SELECT CAST(p.planned_start AS VARCHAR) AS d, CAST(p.planned_start_time AS VARCHAR) AS t " +
+            "FROM production_plan p JOIN plan_order po ON po.plan_id=p.id WHERE po.order_id=?", orderId);
+        if (rows.isEmpty() || rows.getFirst().get("D") == null) return null;
+        LocalDate day = LocalDate.parse(String.valueOf(rows.getFirst().get("D")).substring(0, 10));
+        Object t = rows.getFirst().get("T");
+        return day.atTime(t == null ? LocalTime.MIDNIGHT : LocalTime.parse(String.valueOf(t).substring(0, 5)));
     }
 
     private Map<String,Object> order(long id) {
