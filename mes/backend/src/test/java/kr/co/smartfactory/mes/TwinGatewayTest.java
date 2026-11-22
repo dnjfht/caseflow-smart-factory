@@ -84,4 +84,11 @@ class TwinGatewayTest {
   var s=g.sample(); assertThat(s.lineExit()).isEqualTo(15); assertThat(s.launched()).isEqualTo(34);
   g.syncField(run(true,17)); assertThat(g.sample().lineExit()).isEqualTo(17);
  }
+ @Test void aCopyRestartingMidRunIsNotAStopButton(){
+  TwinGateway g=new TwinGateway(); g.target(52); g.stop(false);
+  g.syncTwin("b",run(true,30)); g.syncField(run(true,31)); g.syncTwin("b",run(true,30));
+  var f=g.syncField(run(false,0)); // OIP Desktop re-read the project: counters and latch back to zero
+  assertThat(f.pulses()).containsExactly("HmiStart");
+  assertThat(g.syncTwin("b",run(true,30)).pulses()).isEmpty();
+ }
 }

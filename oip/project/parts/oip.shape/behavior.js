@@ -111,7 +111,8 @@ definePart({
     if (p.solid !== false) mp.collision = 'hull'
     return [mp]
   },
-  react() {
-    // inert scenery — no tags, no motion
+  // inert scenery: an empty step() rather than react(), so older OIP Desktop builds (which require step) load it too
+  step() {
+    // no tags, no motion
   },
 })

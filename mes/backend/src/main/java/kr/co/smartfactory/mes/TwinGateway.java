@@ -81,6 +81,9 @@ public class TwinGateway implements PlcGateway {
 
     private void accept(Side self, Side other, Map<String, Object> reported, Instant now) {
         if (reported == null || reported.isEmpty()) return;
+        // a copy whose counters went back restarted its simulation (a reload, OIP Desktop re-reading the project):
+        // its latch dropping is not a stop button, and it rejoins like a copy coming online
+        if (num(reported, "LaunchedCount") < num(self.tags, "LaunchedCount")) self.runLatch = null;
         self.tags = Map.copyOf(reported);
         self.seen = now;
         Object latch = reported.get("RunLatch");
