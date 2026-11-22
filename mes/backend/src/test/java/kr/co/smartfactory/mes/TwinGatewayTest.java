@@ -21,13 +21,46 @@ class TwinGatewayTest {
   seen.set(side, Instant.EPOCH);
  }
 
- @Test void withAFieldPcTheTwinMirrorsOipDesktop(){
+ static Map<String,Object> field(boolean latch,int launched,int inspected,boolean lastGood,int shipped,int target){
+  Map<String,Object> t=run(latch,shipped); t.put("LaunchedCount",launched); t.put("InspectedCount",inspected);
+  t.put("LastVerdictGood",lastGood); t.put("TargetQuantity",target); return t;
+ }
+ static Map<String,Object> twin(boolean latch,int launched,int inspected,int shipped){
+  Map<String,Object> t=run(latch,shipped); t.put("LaunchedCount",launched); t.put("InspectedCount",inspected); return t;
+ }
+ @Test void withAFieldPcTheTwinFollowsOipDesktop(){
   TwinGateway g=new TwinGateway(); g.target(3); g.stop(false);
-  g.syncField(run(true,1));
-  var reply=g.syncTwin("b",run(false,0));
-  assertThat(reply.mirror()).containsEntry("BodyConveyorRun",true).containsEntry("RobotCommand",1);
-  assertThat(reply.tags()).containsEntry("ShippedCount",1); // the panel shows OIP Desktop's line
-  assertThat(g.sample().lineExit()).isEqualTo(1);           // and the MES counts it alone
+  g.syncField(field(false,0,0,false,0,3)); // the field PC comes online, then the desktop launches a set
+  g.syncField(field(true,1,0,false,0,3));
+  var reply=g.syncTwin("b",twin(false,0,0,0));
+  assertThat(reply.mirror()).isNotNull();
+  assertThat(reply.writes()).containsEntry("MirrorMode",true).containsEntry("MirrorLaunchLimit",1).containsEntry("TargetQuantity",30000)
+    .containsEntry("MirrorVerdictReady",false);
+  assertThat(reply.pulses()).containsExactly("HmiStart");            // the desktop runs: the twin runs too
+  assertThat(reply.tags()).containsEntry("LaunchedCount",1);        // the panel shows the desktop's line
+  assertThat(g.sample().launched()).isEqualTo(1);                   // and the MES counts it alone
+ }
+ @Test void theTwinTakesTheDesktopsVerdictForEachProductInOrder(){
+  TwinGateway g=new TwinGateway(); g.target(3); g.stop(false);
+  g.syncField(field(false,0,0,false,0,3));
+  g.syncField(field(true,2,1,false,0,3));   // desktop: 1st product rejected
+  g.syncField(field(true,3,2,true,1,3));    // desktop: 2nd product good
+  var r0=g.syncTwin("b",twin(true,1,0,0));  // twin's 1st product
+  assertThat(r0.writes()).containsEntry("MirrorVerdictReady",true).containsEntry("MirrorVerdictGood",false);
+  var r1=g.syncTwin("b",twin(true,2,1,0));  // twin's 2nd product
+  assertThat(r1.writes()).containsEntry("MirrorVerdictReady",true).containsEntry("MirrorVerdictGood",true);
+  var r2=g.syncTwin("b",twin(true,3,2,1));  // twin's 3rd: the desktop has not judged it yet, so the twin waits
+  assertThat(r2.writes()).containsEntry("MirrorVerdictReady",false);
+ }
+ @Test void anOrderStartsTheMirrorFromZero(){
+  TwinGateway g=new TwinGateway(); g.target(2); g.stop(false);
+  g.syncField(field(true,5,4,true,3,3)); g.syncTwin("b",twin(true,5,4,3));
+  g.resetLine();
+  // the desktop has not cleared its line yet: its old counts must not let the twin launch
+  assertThat(g.syncTwin("b",twin(false,0,0,0)).writes()).containsEntry("MirrorLaunchLimit",0);
+  g.syncField(field(false,0,0,false,0,2));
+  g.syncField(field(true,1,0,false,0,2));
+  assertThat(g.syncTwin("b",twin(false,0,0,0)).writes()).containsEntry("MirrorLaunchLimit",1);
  }
  @Test void withoutAFieldPcTheTwinIsTheLine(){
   TwinGateway g=new TwinGateway(); g.target(3); g.stop(false);
@@ -88,5 +121,14 @@ class TwinGatewayTest {
   assertThat(reply.writes().get("MesPermit")).isEqualTo(true);
   var s=g.sample(); assertThat(s.lineExit()).isEqualTo(15); assertThat(s.launched()).isEqualTo(34);
   g.syncField(run(true,17)); assertThat(g.sample().lineExit()).isEqualTo(17);
+ }
+ @Test void theTwinFinishesItsLastProductsAfterTheDesktopIsDone(){
+  TwinGateway g=new TwinGateway(); g.target(2); g.stop(false);
+  g.syncField(field(false,0,0,false,0,2));
+  g.syncField(field(true,2,2,true,2,2));
+  g.stop(true); // the MES withdrew the permit: the order is complete
+  Map<String,Object> desk=field(false,2,2,true,2,2); desk.put("MesPermit",false); g.syncField(desk);
+  assertThat(g.syncTwin("b",twin(true,2,1,1)).writes()).containsEntry("MesPermit",true);   // its 2nd set still on the line
+  assertThat(g.syncTwin("b",twin(false,2,2,2)).writes()).containsEntry("MesPermit",false); // caught up
  }
 }

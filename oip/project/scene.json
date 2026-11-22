@@ -61,7 +61,8 @@
         "inchesPerPulse": 1,
         "pulseTag": "",
         "encoderTag": ""
-      }
+      },
+      "locked": true
     },
     {
       "id": "LidConveyor",
@@ -123,7 +124,8 @@
         "inchesPerPulse": 1,
         "pulseTag": "",
         "encoderTag": ""
-      }
+      },
+      "locked": true
     },
     {
       "id": "AssemblyOut",
@@ -185,7 +187,8 @@
         "inchesPerPulse": 1,
         "pulseTag": "",
         "encoderTag": ""
-      }
+      },
+      "locked": true
     },
     {
       "id": "Inspection",
@@ -247,7 +250,8 @@
         "inchesPerPulse": 1,
         "pulseTag": "",
         "encoderTag": ""
-      }
+      },
+      "locked": true
     },
     {
       "id": "Packing",
@@ -309,7 +313,8 @@
         "inchesPerPulse": 1,
         "pulseTag": "",
         "encoderTag": ""
-      }
+      },
+      "locked": true
     },
     {
       "id": "FinishedGoods",
@@ -371,7 +376,8 @@
         "inchesPerPulse": 1,
         "pulseTag": "",
         "encoderTag": ""
-      }
+      },
+      "locked": true
     },
     {
       "id": "Shipping",
@@ -433,7 +439,8 @@
         "inchesPerPulse": 1,
         "pulseTag": "",
         "encoderTag": ""
-      }
+      },
+      "locked": true
     },
     {
       "id": "BodyFeed",
@@ -467,7 +474,8 @@
         "conveyorId": "",
         "runTag": "%QX0.2",
         "countTag": ""
-      }
+      },
+      "locked": true
     },
     {
       "id": "LidFeed",
@@ -501,7 +509,8 @@
         "conveyorId": "",
         "runTag": "%QX0.3",
         "countTag": ""
-      }
+      },
+      "locked": true
     },
     {
       "id": "AssemblyRobot",
@@ -674,7 +683,8 @@
         "cupMarginX": 0.05,
         "cupMarginZ": 0.05,
         "cupsEnabled": true
-      }
+      },
+      "locked": true
     },
     {
       "id": "StartButton",
@@ -744,7 +754,8 @@
         "normallyClosed": false,
         "mark": "",
         "tag": "%IX0.2"
-      }
+      },
+      "locked": true
     },
     {
       "id": "BodyAtAssembly",
@@ -764,7 +775,8 @@
         "normallyClosed": false,
         "mark": "",
         "tag": "%IX0.4"
-      }
+      },
+      "locked": true
     },
     {
       "id": "LidDetected",
@@ -784,7 +796,8 @@
         "normallyClosed": false,
         "mark": "",
         "tag": "%IX0.3"
-      }
+      },
+      "locked": true
     },
     {
       "id": "LidAtAssembly",
@@ -804,7 +817,8 @@
         "normallyClosed": false,
         "mark": "",
         "tag": "%IX0.5"
-      }
+      },
+      "locked": true
     },
     {
       "id": "AssembledDetected",
@@ -824,7 +838,8 @@
         "normallyClosed": false,
         "mark": "",
         "tag": "%IX1.0"
-      }
+      },
+      "locked": true
     },
     {
       "id": "InspectionDetected",
@@ -844,7 +859,8 @@
         "normallyClosed": false,
         "mark": "",
         "tag": "%IX1.1"
-      }
+      },
+      "locked": true
     },
     {
       "id": "PackDetected",
@@ -864,7 +880,8 @@
         "normallyClosed": false,
         "mark": "",
         "tag": "%IX1.3"
-      }
+      },
+      "locked": true
     },
     {
       "id": "FinishedGoodsDetected",
@@ -884,7 +901,8 @@
         "normallyClosed": false,
         "mark": "",
         "tag": "%IX1.5"
-      }
+      },
+      "locked": true
     },
     {
       "id": "ShipmentDetected",
@@ -904,7 +922,8 @@
         "normallyClosed": false,
         "mark": "",
         "tag": "%IX1.6"
-      }
+      },
+      "locked": true
     },
     {
       "id": "BodyStopper",
@@ -923,7 +942,8 @@
         "raiseHeight": 0.12,
         "airPressureHeight": 0.07,
         "tag": "%QX0.4"
-      }
+      },
+      "locked": true
     },
     {
       "id": "LidStopper",
@@ -942,7 +962,8 @@
         "raiseHeight": 0.12,
         "airPressureHeight": 0.07,
         "tag": "%QX0.5"
-      }
+      },
+      "locked": true
     },
     {
       "id": "RejectBranch",
@@ -1004,7 +1025,8 @@
         "inchesPerPulse": 1,
         "pulseTag": "",
         "encoderTag": ""
-      }
+      },
+      "locked": true
     },
     {
       "id": "RejectDiverter",
@@ -1023,7 +1045,8 @@
         "divertDistance": 0.75,
         "standHeight": 0.3847,
         "tag": "%QX1.1"
-      }
+      },
+      "locked": true
     },
     {
       "id": "RejectDetected",
@@ -1043,7 +1066,8 @@
         "normallyClosed": false,
         "mark": "",
         "tag": "%IX1.2"
-      }
+      },
+      "locked": true
     },
     {
       "id": "AssemblyCell",
@@ -1066,7 +1090,8 @@
         "debugRunningTag": "",
         "debugRobotTag": "",
         "debugMainTag": ""
-      }
+      },
+      "locked": true
     },
     {
       "id": "InspectionCell",
@@ -1089,7 +1114,8 @@
         "debugRunningTag": "",
         "debugRobotTag": "",
         "debugMainTag": ""
-      }
+      },
+      "locked": true
     },
     {
       "id": "PackingCell",
@@ -1112,7 +1138,8 @@
         "debugRunningTag": "",
         "debugRobotTag": "",
         "debugMainTag": ""
-      }
+      },
+      "locked": true
     },
     {
       "id": "SortEye",
@@ -1131,7 +1158,8 @@
         "normallyClosed": false,
         "mark": "",
         "tag": "%IX2.2"
-      }
+      },
+      "locked": true
     },
     {
       "id": "ShippingOutlet",
@@ -1153,7 +1181,8 @@
         "rateTag": "",
         "cycleTag": "",
         "blockTag": ""
-      }
+      },
+      "locked": true
     },
     {
       "id": "RejectOutlet",
@@ -1175,7 +1204,8 @@
         "rateTag": "",
         "cycleTag": "",
         "blockTag": ""
-      }
+      },
+      "locked": true
     },
     {
       "id": "BodyRackMES",
@@ -1191,7 +1221,8 @@
         "capacity": 10,
         "stockTag": "%QW5",
         "item": "BODY"
-      }
+      },
+      "locked": true
     },
     {
       "id": "LidRackMES",
@@ -1207,7 +1238,8 @@
         "capacity": 10,
         "stockTag": "%QW6",
         "item": "LID"
-      }
+      },
+      "locked": true
     },
     {
       "id": "ShippingTruckMES",
@@ -1223,7 +1255,8 @@
         "capacity": 10,
         "loadTag": "%QW3",
         "targetTag": "%QW4"
-      }
+      },
+      "locked": true
     },
     {
       "id": "RobotPedestal",
@@ -1244,7 +1277,8 @@
         "sides": 20,
         "color": "#5b6670",
         "solid": false
-      }
+      },
+      "locked": true
     }
   ],
   "plcs": [

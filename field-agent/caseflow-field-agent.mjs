@@ -17,10 +17,8 @@ const TAGS = ['M0', 'RunLatch', 'MesPermit', 'MesMaterialPermit', 'WorkOrderActi
   'LaunchedCount', 'RejectCount', 'ProducedCount', 'ShippedCount', 'AssemblyPhase', 'InspectionPhase', 'PackingPhase',
   'BodyConveyorRun', 'BodyStopper', 'LidStopper', 'RejectDiverter', 'RobotReady', 'PermitLamp', 'RunLamp', 'AlarmLamp',
   'BodyStockDisplay', 'LidStockDisplay',
-  // PLC outputs: the web twin mirrors these, so its conveyors, feeders, stoppers and robot move as OIP Desktop's do
-  'LidConveyorRun', 'BodyFeedEnable', 'LidFeedEnable', 'RobotStart', 'AssemblyOutRun', 'InspectionConveyorRun',
-  'PackingConveyorRun', 'PackStart', 'FinishedGoodsConveyorRun', 'ShippingConveyorRun', 'InspectionStart',
-  'RobotReleasedSignal', 'RobotCommand', 'TruckLoadVisual', 'TruckTargetVisual', 'BodyStockVisual', 'LidStockVisual']
+  // the web twin follows this line: it launches when this one has and takes this line's verdict for each product
+  'InspectedCount', 'LastVerdictGood']
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const stamp = () => new Date().toLocaleTimeString('ko-KR')
@@ -118,5 +116,5 @@ for (;;) {
     warned = msg
     await sleep(2000)
   }
-  await sleep(500)
+  await sleep(200)
 }

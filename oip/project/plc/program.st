@@ -6,6 +6,11 @@ VAR_INPUT
   IndyBridgeEnabled : BOOL := FALSE;
   IndyDone : BOOL := FALSE;
   IndyFault : BOOL := FALSE;
+  (* 미러 모드: 웹 트윈이 현장 PC(OIP 데스크톱) 라인을 따라갈 때만 TRUE. 현장 라인에서는 항상 FALSE *)
+  MirrorMode : BOOL := FALSE;
+  MirrorLaunchLimit : INT := 0; (* 현장 라인이 투입한 세트 수: 이 수만큼만 투입 *)
+  MirrorVerdictReady : BOOL := FALSE; (* 현장 라인의 같은 순번 제품 판정이 도착함 *)
+  MirrorVerdictGood : BOOL := FALSE; (* 그 판정: TRUE 양품, FALSE 불량 *)
 END_VAR
 VAR
   StartPB AT %IX0.0 : BOOL;
@@ -91,6 +96,9 @@ VAR
   PackingPhase : INT := 0;
   AssemblyPermit : BOOL := FALSE;
   RejectPending : BOOL := FALSE;
+  InspectedCount : INT := 0; (* 판정을 내린 제품 수 = 다음 제품의 판정 순번 *)
+  LastVerdictGood : BOOL := FALSE; (* 마지막 판정 결과 *)
+  VerdictGood : BOOL := FALSE;
   RobotBusySeen : BOOL := FALSE;
   OipRobotComplete : BOOL := FALSE;
   IndyWaitCycles : INT := 0;
@@ -181,9 +189,13 @@ IF M0 THEN
       InspectionPhase := 1;
     END_IF;
   ELSIF InspectionPhase = 1 THEN
-    IF InspectionResultValidWord = 1 THEN
+    (* 미러 모드에서는 스스로 판정하지 않고, 현장 라인이 같은 순번 제품에 내린 판정이 올 때까지 기다려 그대로 쓴다 *)
+    IF (InspectionResultValidWord = 1) AND (NOT MirrorMode OR MirrorVerdictReady) THEN
       M9 := TRUE;
-      IF InspectionResultWord = 1 THEN
+      IF MirrorMode THEN VerdictGood := MirrorVerdictGood; ELSE VerdictGood := (InspectionResultWord = 1); END_IF;
+      InspectedCount := InspectedCount + 1;
+      LastVerdictGood := VerdictGood;
+      IF VerdictGood THEN
         M11 := TRUE;
         GoodWaiting := GoodWaiting + 1;
       ELSE
@@ -241,8 +253,11 @@ END_IF;
 BodyConveyorRun := M0 AND (((AssemblyPhase = 0) AND AssemblyPermit AND NOT M3)
                       OR ((AssemblyPhase = 2) AND NOT M7));
 LidConveyorRun := M0 AND (AssemblyPhase = 0) AND AssemblyPermit AND NOT M4;
-BodyFeedEnable := M0 AND MesMaterialPermit AND (AssemblyPhase = 0) AND AssemblyPermit AND NOT M1;
-LidFeedEnable := M0 AND MesMaterialPermit AND (AssemblyPhase = 0) AND AssemblyPermit AND NOT M2;
+(* 미러 모드: 현장 라인이 투입한 세트 수만큼만 투입한다 (본체가 이미 나간 세트의 뚜껑은 허용) *)
+BodyFeedEnable := M0 AND MesMaterialPermit AND (AssemblyPhase = 0) AND AssemblyPermit AND NOT M1
+  AND (NOT MirrorMode OR (LaunchedCount < MirrorLaunchLimit));
+LidFeedEnable := M0 AND MesMaterialPermit AND (AssemblyPhase = 0) AND AssemblyPermit AND NOT M2
+  AND (NOT MirrorMode OR M1 OR (LaunchedCount < MirrorLaunchLimit));
 BodyStopper := M0 AND M3 AND (AssemblyPhase = 0);
 LidStopper := M0 AND M4 AND (AssemblyPhase = 0);
 RobotStart := M0 AND (AssemblyPhase = 1) AND NOT M6;

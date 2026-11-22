@@ -86,12 +86,12 @@ export function useTwinLink(): LinkState {
 const SYNC_TAGS = ['M0', 'RunLatch', 'MesPermit', 'MesMaterialPermit', 'WorkOrderActive', 'TargetQuantity', 'MachineState', 'FaultCode',
   'LaunchedCount', 'RejectCount', 'ProducedCount', 'ShippedCount', 'AssemblyPhase', 'InspectionPhase', 'PackingPhase',
   'BodyConveyorRun', 'BodyStopper', 'LidStopper', 'RejectDiverter', 'RobotReady', 'PermitLamp', 'RunLamp', 'AlarmLamp',
-  'BodyStockDisplay', 'LidStockDisplay']
+  'BodyStockDisplay', 'LidStockDisplay', 'InspectedCount', 'LastVerdictGood']
 const session = Math.random().toString(36).slice(2)
 let lastReset: number | null = null
 let lastProgram: number | null = null
 let lastMirror: number | null = null
-let mirroring = false
+let mirroring = false // whether leftover output forces have been released
 
 /** the arm on the line; a stored program taught on another arm (the earlier six-axis robot) is not applied to it */
 export const ROBOT_MODEL = 'neuromeka.indy7'
@@ -136,15 +136,16 @@ export function startTwinSync() {
       if (lastMirror === null) lastMirror = reply.mirrorSeq
       else if (reply.mirrorSeq !== lastMirror) { lastMirror = reply.mirrorSeq; await t.reset(); return }
       for (const [k, v] of Object.entries(reply.writes)) if (all[k] !== v && (typeof v === 'boolean' || typeof v === 'number')) t.write(k, v)
-      // with a field PC, OIP Desktop is the line and this twin moves with its PLC outputs; without one, this twin is the line
-      if (reply.mirror) { t.mirror(reply.mirror); mirroring = true }
-      else if (mirroring) { t.mirror(null); mirroring = false }
-      // a start/stop pressed on the MES operator panel while this twin is the line
+      // with a field PC, OIP Desktop is the line and this twin follows it (the MES's writes put it in mirror mode: launch
+      // when the desktop launches, the desktop's verdict for each product); without one, this twin is the line.
+      // Outputs are never forced: an earlier build did, so hand any left forced back to this twin's program.
+      if (!mirroring) { t.mirror(null); mirroring = true }
+      // run/stop: the operator panel's presses while this twin is the line, the desktop's run state while following
       for (const key of reply.pulses ?? []) if (key === 'HmiStart' || key === 'HmiStop') await t.press(key)
       if (lastProgram !== reply.programSeq) { lastProgram = reply.programSeq; void loadRobotProgram(t) }
       setLink({ mode: 'driver', serverTags: reply.tags ?? {}, field: reply.fieldConnected, message: '' })
     } catch {
       setLink({ mode: 'offline', message: 'MES 서버에 연결 중입니다. (무료 서버는 처음 깨어나는 데 30초쯤 걸립니다)' })
     } finally { busy = false }
-  }, 500)
+  }, 200)
 }

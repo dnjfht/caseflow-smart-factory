@@ -19,8 +19,10 @@ import org.springframework.stereotype.Component;
  *       ({@code field-agent/caseflow-field-agent.mjs}, {@code /api/twin/field-sync}). When it is connected it IS the
  *       line: its PLC runs the process and the MES counts its production.</li>
  *   <li><b>Web twin</b>: the same scene running in the browser that has the MES open ({@code /api/twin/sync}). With a
- *       field PC it is a mirror: its PLC outputs are forced to OIP Desktop's, so its conveyors, feeders, stoppers and
- *       robot move as the desktop's do. Without one it is the line itself. One browser drives at a time (a lease).</li>
+ *       field PC it follows OIP Desktop (mirror mode): it runs its own PLC program, so its robot, cells and stoppers
+ *       keep their own correct timing, but it launches a set only when the desktop has launched one, takes the
+ *       desktop's verdict for each product in order instead of judging it, and runs and stops with the desktop. Its
+ *       own counts are never recorded. Without a field PC it is the line itself. One browser drives at a time.</li>
  * </ul>
  * A start or stop pressed anywhere (the MES operator panel, OIP Desktop's buttons) acts on the one line, so the two
  * screens never run two separate productions.
@@ -29,7 +31,10 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(name = "mes.plc.mode", havingValue = "twin")
 public class TwinGateway implements PlcGateway {
     static final Duration LEASE = Duration.ofSeconds(8);
-    static final Duration STALE = Duration.ofSeconds(5);
+    /** a copy silent this long is gone (the free server or the field PC's network can pause a few seconds) */
+    static final Duration STALE = Duration.ofSeconds(10);
+    /** the field PC back after this long is a new start: the twin clears its line and follows from there */
+    static final Duration REJOIN = Duration.ofSeconds(30);
 
     /** one copy of the line: its last tags, when they came, and the presses queued for it */
     static final class Side {
@@ -44,7 +49,7 @@ public class TwinGateway implements PlcGateway {
     private final Side field = new Side();
     private volatile String holder;
     private volatile Instant holderSeen = Instant.EPOCH;
-    private final Map<String, Object> desired = new ConcurrentHashMap<>(Map.of("MesPermit", false, "WorkOrderActive", 1));
+    private final Map<String, Object> desired = new ConcurrentHashMap<>(Map.of("MesPermit", false, "WorkOrderActive", 1, "MirrorMode", false));
     private final AtomicInteger resetSeq = new AtomicInteger();
     private final AtomicInteger programSeq = new AtomicInteger();
 
@@ -55,13 +60,17 @@ public class TwinGateway implements PlcGateway {
     private final int[] offset = new int[COUNTERS.length];
     private final int[] lastRaw = new int[COUNTERS.length];
 
-    /** OIP Desktop's PLC outputs a mirroring twin is forced to */
-    static final List<String> OUTPUTS = List.of("BodyConveyorRun", "LidConveyorRun", "BodyFeedEnable", "LidFeedEnable",
-        "BodyStopper", "LidStopper", "RobotStart", "AssemblyOutRun", "InspectionConveyorRun", "RejectDiverter",
-        "PackingConveyorRun", "PackStart", "FinishedGoodsConveyorRun", "ShippingConveyorRun", "AlarmLamp", "InspectionStart",
-        "RobotReleasedSignal", "PermitLamp", "RunLamp", "RobotCommand", "TruckLoadVisual", "TruckTargetVisual",
-        "BodyStockVisual", "LidStockVisual");
     private final AtomicInteger mirrorSeq = new AtomicInteger();
+    /** OIP Desktop's verdicts in order (true = good): the mirroring twin's n-th product gets the desktop's n-th verdict */
+    private final List<Boolean> fieldVerdicts = new ArrayList<>();
+    /**
+     * How many sets OIP Desktop had launched when the twin started following it: the twin's n-th set is the desktop's
+     * (launchBase + n)-th, and so is its n-th verdict (products are inspected in the order they were launched)
+     */
+    private int launchBase;
+    private Instant lastMirrorPress = Instant.EPOCH;
+    /** after a new work order, until OIP Desktop reports its line cleared: its old counts must not reach the twin */
+    private boolean awaitingFieldReset;
 
     /**
      * {@code mirror}: the outputs to force on a twin that follows OIP Desktop, else null. {@code mirrorSeq} moves when
@@ -86,13 +95,42 @@ public class TwinGateway implements PlcGateway {
         boolean lease = session != null && session.equals(holder);
         if (!lease) return new SyncReply(false, Map.of(), List.of(), resetSeq.get(), programSeq.get(), field.fresh(now), lineTags(now));
         holderSeen = now;
+        // a twin that counts lower than it did has started over (a reload, a new browser): it follows from here
+        boolean twinRestarted = reported != null && num(reported, "LaunchedCount") < num(twin.tags, "LaunchedCount");
         accept(twin, reported, now);
         if (field.fresh(now)) {
-            Map<String, Object> mirror = new LinkedHashMap<>();
-            for (String k : OUTPUTS) if (field.tags.get(k) != null) mirror.put(k, field.tags.get(k));
+            // the twin follows OIP Desktop: it runs its own PLC program (so its robot, cells and stoppers keep their own
+            // timing), launches a set only when the desktop has, and takes the desktop's verdict for each product
+            if (twinRestarted) rebaseMirror();
+            Map<String, Object> f = field.tags, w = new LinkedHashMap<>(desired);
+            // the twin never finishes by its own count: it runs while the desktop does, then until it has handled every
+            // set the desktop launched (its products are the desktop's, one for one, in launch order)
+            int twinTarget = 30000; // far below INT max: the PLC adds the reject count to it
+            w.put("MirrorMode", true);
+            // the twin trails the desktop: when the desktop finishes and the MES withdraws the permit, the twin keeps it
+            // until it has shipped what the desktop shipped, so it finishes its own last products instead of stopping short
+            int twinLaunched = num(twin.tags, "LaunchedCount");
+            boolean catchingUp = twinLaunched < num(f, "LaunchedCount") - launchBase
+                || num(twin.tags, "RejectCount") + num(twin.tags, "ShippedCount") < twinLaunched;
+            w.put("MesPermit", bool(f, "MesPermit") || (catchingUp && bool(twin.tags, "RunLatch")));
+            w.put("MesMaterialPermit", !Boolean.FALSE.equals(f.get("MesMaterialPermit")));
+            w.put("TargetQuantity", twinTarget);
+            w.put("MirrorLaunchLimit", awaitingFieldReset ? 0 : Math.max(0, num(f, "LaunchedCount") - launchBase));
+            int index = launchBase + num(twin.tags, "InspectedCount");
+            boolean ready = index < fieldVerdicts.size();
+            w.put("MirrorVerdictReady", ready);
+            w.put("MirrorVerdictGood", ready && fieldVerdicts.get(index));
+            // run and stop with the desktop (a stop for reaching the target is the twin's own, after its last product)
+            boolean fieldRun = bool(f, "RunLatch"), twinRun = bool(twin.tags, "RunLatch");
+            boolean fieldFinished = num(f, "TargetQuantity") > 0 && num(f, "ShippedCount") >= num(f, "TargetQuantity");
+            List<String> press = new ArrayList<>();
+            if (Duration.between(lastMirrorPress, now).toMillis() > 1500) {
+                if (fieldRun && !twinRun) press.add("HmiStart");
+                else if (!fieldRun && twinRun && !fieldFinished) press.add("HmiStop");
+                if (!press.isEmpty()) lastMirrorPress = now;
+            }
             twin.pulses.clear();
-            return new SyncReply(true, new LinkedHashMap<>(desired), List.of(), resetSeq.get(), programSeq.get(), true,
-                field.tags, mirror, mirrorSeq.get());
+            return new SyncReply(true, w, press, resetSeq.get(), programSeq.get(), true, field.tags, Map.of(), mirrorSeq.get());
         }
         return new SyncReply(true, writesFor(twin), drain(twin), resetSeq.get(), programSeq.get(), false, twin.tags, null, mirrorSeq.get());
     }
@@ -100,8 +138,12 @@ public class TwinGateway implements PlcGateway {
     /** the shop-floor PC's agent reports OIP Desktop's tags */
     public synchronized SyncReply syncField(Map<String, Object> reported) {
         Instant now = Instant.now();
-        if (!field.fresh(now)) mirrorSeq.incrementAndGet(); // coming online: the twin clears its line and follows this one
+        boolean comingOnline = Duration.between(field.seen, now).compareTo(REJOIN) > 0;
+        if (reported != null && num(reported, "InspectedCount") < num(field.tags, "InspectedCount")) fieldVerdicts.clear(); // desktop restarted
         accept(field, reported, now);
+        if (awaitingFieldReset && num(field.tags, "LaunchedCount") == 0 && num(field.tags, "InspectedCount") == 0) awaitingFieldReset = false;
+        if (!awaitingFieldReset) recordVerdicts();
+        if (comingOnline) { mirrorSeq.incrementAndGet(); rebaseMirror(); } // the twin clears its line and follows from here
         return new SyncReply(true, writesFor(field), drain(field), resetSeq.get(), programSeq.get(), true, Map.of());
     }
 
@@ -110,6 +152,16 @@ public class TwinGateway implements PlcGateway {
         self.tags = Map.copyOf(reported);
         self.seen = now;
         if (reported.get("RunLatch") instanceof Boolean on) self.runLatch = on;
+    }
+
+    /** the desktop's n-th verdict is its LastVerdictGood when its InspectedCount reaches n+1 */
+    private void recordVerdicts() {
+        int n = num(field.tags, "InspectedCount");
+        while (fieldVerdicts.size() < n) fieldVerdicts.add(bool(field.tags, "LastVerdictGood"));
+    }
+
+    private void rebaseMirror() {
+        launchBase = num(field.tags, "LaunchedCount");
     }
 
     /** a start or stop pressed on the MES operator panel acts on the line: OIP Desktop if connected, else the twin */
@@ -188,13 +240,17 @@ public class TwinGateway implements PlcGateway {
     @Override public synchronized void resetLine() {
         resetSeq.incrementAndGet();
         twin.seen = Instant.EPOCH;
-        field.seen = Instant.EPOCH;
+        // OIP Desktop stays the line through a reset (the twin keeps following it); its counts read as the old run until it clears
         twin.runLatch = null;
         field.runLatch = null;
         recordSide = null;
         java.util.Arrays.fill(lastCount, 0);
         java.util.Arrays.fill(offset, 0);
         java.util.Arrays.fill(lastRaw, 0);
+        fieldVerdicts.clear();
+        launchBase = 0;
+        awaitingFieldReset = true;
+        twin.tags = Map.of();
     }
     @Override public long resetTimeoutMs() { return 25000; }
     @Override public synchronized void resumeRun(boolean permitted, int target, int launched, int rejected, int packed, int exit) {
