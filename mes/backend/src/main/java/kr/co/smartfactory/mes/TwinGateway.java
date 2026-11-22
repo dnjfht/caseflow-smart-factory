@@ -271,6 +271,9 @@ public class TwinGateway implements PlcGateway {
     /** a start or stop pressed on the MES operator panel acts on the line: OIP Desktop if connected, else the twin */
     public synchronized void press(String key) {
         if (!"HmiStart".equals(key) && !"HmiStop".equals(key)) throw new IllegalArgumentException(key);
+        // start needs the MES permit: the PLC ignores it anyway (its stop conditions win), but say so instead of queueing it
+        if ("HmiStart".equals(key) && !Boolean.TRUE.equals(desired.get("MesPermit")))
+            throw new IllegalStateException("MES 가동 허가가 없어 시작할 수 없습니다.");
         (field.fresh(Instant.now()) ? field : twin).pulses.add(key);
     }
 

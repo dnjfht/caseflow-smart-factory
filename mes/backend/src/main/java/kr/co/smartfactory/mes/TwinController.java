@@ -38,6 +38,7 @@ public class TwinController {
     public Map<String, Object> press(@RequestBody PressRequest request) {
         try { twin.press(request.key()); }
         catch (IllegalArgumentException e) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "HmiStart 또는 HmiStop만 누를 수 있습니다."); }
+        catch (IllegalStateException e) { throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage()); }
         return Map.of("pressed", request.key(), "fieldConnected", twin.fieldConnected());
     }
 

@@ -55,7 +55,7 @@ export default function LiveScene({ data }: { data: Data; onUpdate: () => Promis
         </div>
         <p className="field-state">{ready ? STATE[state] ?? `상태 ${state}` : '현장 제어기 연결 대기'}</p>
         <div className="field-buttons">
-          <button className="pb start" disabled={!ready || running} onClick={() => press('HmiStart')}>시작</button>
+          <button className="pb start" disabled={!ready || running || !permit} title={permit ? '' : 'MES 가동 허가가 있어야 시작할 수 있습니다'} onClick={() => press('HmiStart')}>시작</button>
           <button className="pb stop" disabled={!ready || !running} onClick={() => press('HmiStop')}>정지</button>
         </div>
         <dl className="field-counts">
@@ -66,6 +66,8 @@ export default function LiveScene({ data }: { data: Data; onUpdate: () => Promis
           <div><dt>출하</dt><dd>{counts.shipped}</dd></div>
         </dl>
         {isStaticSite && <div className="field-demo"><small>공개 시연 · MES 서버 없이 실행 중</small><div><button disabled={!ready || permit} onClick={() => demoPermit(true)}>MES 허가 (시연)</button><button disabled={!ready || !permit} onClick={() => demoPermit(false)}>허가 해제</button></div></div>}
+        {!isStaticSite && !permit && !running && <p className="fine">MES 허가가 꺼져 있어 시작 버튼이 잠겨 있습니다. PLC도 허가 없이는 시작 신호를 무시합니다(데스크톱의 초록 버튼 포함).</p>}
+        {remote && link.field && !running && localTags.M0 === true && <p className="field-pc on">웹 트윈이 데스크톱이 이미 만든 제품을 마저 따라가는 중입니다(탭이 가려져 있던 동안 브라우저가 3D를 멈춰 뒤처진 만큼). 실적은 데스크톱 기준이라 숫자는 늘지 않습니다.</p>}
         {!isStaticSite && <p className={link.field ? 'field-pc on' : 'field-pc'}>{link.field ? '현장 PC의 OIP 데스크톱이 실제 라인입니다 · 이 3D는 데스크톱이 투입한 세트를 같은 순서로 투입하고 같은 판정(양품·불량)을 적용해 따라갑니다. 시작·정지는 데스크톱에 눌립니다' : '현장 PC(OIP 데스크톱) 미연결 · 웹 트윈이 현장입니다'}</p>}
         {link.message && <p className="field-link">{link.message}</p>}
         {notice && <p className="field-notice" role="status">{notice}</p>}
