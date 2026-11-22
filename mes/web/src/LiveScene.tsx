@@ -21,6 +21,12 @@ export default function LiveScene({ data }: { data: Data; onUpdate: () => Promis
   const running = tags.M0 === true
   const state = Number(tags.MachineState ?? 0)
   const num = (k: string) => Number(tags[k] ?? 0)
+  // counts shown are the line's, as the MES keeps them: a reloaded page restarts its own copy of the simulation from
+  // zero, but the order's production carries on from what the server has already counted
+  const line = !isStaticSite && data.plc.connected && active
+  const counts = line
+    ? { target: Number(s(active, 'TARGET_QTY')) || num('TargetQuantity'), launched: data.plc.launched, rejected: data.plc.rejected, packed: data.plc.packed, shipped: data.plc.lineExit }
+    : { target: num('TargetQuantity'), launched: num('LaunchedCount'), rejected: num('RejectCount'), packed: num('ProducedCount'), shipped: num('ShippedCount') }
   async function press(key: 'HmiStart' | 'HmiStop') {
     const t = twin()
     if (!t) return
@@ -49,11 +55,11 @@ export default function LiveScene({ data }: { data: Data; onUpdate: () => Promis
           <button className="pb stop" disabled={!ready || !running || viewer} onClick={() => press('HmiStop')}>정지</button>
         </div>
         <dl className="field-counts">
-          <div><dt>목표</dt><dd>{num('TargetQuantity')}</dd></div>
-          <div><dt>투입</dt><dd>{num('LaunchedCount')}</dd></div>
-          <div><dt>불량</dt><dd>{num('RejectCount')}</dd></div>
-          <div><dt>포장</dt><dd>{num('ProducedCount')}</dd></div>
-          <div><dt>출하</dt><dd>{num('ShippedCount')}</dd></div>
+          <div><dt>목표</dt><dd>{counts.target}</dd></div>
+          <div><dt>투입</dt><dd>{counts.launched}</dd></div>
+          <div><dt>불량</dt><dd>{counts.rejected}</dd></div>
+          <div><dt>포장</dt><dd>{counts.packed}</dd></div>
+          <div><dt>출하</dt><dd>{counts.shipped}</dd></div>
         </dl>
         {isStaticSite && <div className="field-demo"><small>공개 시연 · MES 서버 없이 실행 중</small><div><button disabled={!ready || permit} onClick={() => demoPermit(true)}>MES 허가 (시연)</button><button disabled={!ready || !permit} onClick={() => demoPermit(false)}>허가 해제</button></div></div>}
         {!isStaticSite && <p className={link.field ? 'field-pc on' : 'field-pc'}>{link.field ? '현장 PC의 OIP 데스크톱 연결됨 · 시작·정지·허가가 양쪽에 함께 적용됩니다' : '현장 PC(OIP 데스크톱) 미연결 · 웹 트윈이 현장입니다'}</p>}

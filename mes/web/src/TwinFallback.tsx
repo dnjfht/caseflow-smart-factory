@@ -4,7 +4,7 @@ import { twin, useTwinLink, useTwinTags } from './twin'
 // The line in 2D, for a browser that cannot draw 3D: the same running PLC (the twin's simulation runs on the CPU)
 // shown as a plan of the stations, with the assembly robot's arm drawn side-on from its live joint angles.
 
-const C = { belt: '#3c4f55', beltOn: '#1b9876', station: '#ffffff', stationOn: '#e6f7f0', edge: '#c9d8d3', text: '#1c3e40', sub: '#6d8580', robot: '#e2772c' }
+const C = { belt: '#3b4756', beltOn: '#1f5c99', station: '#ffffff', stationOn: '#f1f6fa', edge: '#c9d0d8', text: '#1e2024', sub: '#6c7886', robot: '#e2772c' }
 
 function Arm({ joints, x, y, s }: { joints: number[]; x: number; y: number; s: number }) {
   // side view: J2 shoulder, J3 elbow, J5 wrist (degrees), lengths in arbitrary units
@@ -22,7 +22,7 @@ function Arm({ joints, x, y, s }: { joints: number[]; x: number; y: number; s: n
     <rect x={x - 14 * s} y={y} width={28 * s} height={10 * s} rx={3} fill="#5b4636" />
     <polyline points={pts} fill="none" stroke={C.robot} strokeWidth={9 * s} strokeLinecap="round" strokeLinejoin="round" />
     {[p0, p1, p2].map((p, i) => <circle key={i} cx={p[0]} cy={p[1]} r={4.5 * s} fill="#ffd8b8" stroke="#a84f17" strokeWidth={1.5} />)}
-    <rect x={p3[0] - 7 * s} y={p3[1] - 2 * s} width={14 * s} height={5 * s} fill="#2b3a40" />
+    <rect x={p3[0] - 7 * s} y={p3[1] - 2 * s} width={14 * s} height={5 * s} fill="#242529" />
   </g>
 }
 
@@ -41,7 +41,7 @@ export default function TwinFallback({ view }: { view: 'overview' | 'robot' | 's
 
   if (view === 'robot') {
     return <svg viewBox="0 0 400 260" role="img" aria-label="조립 로봇 관절 자세 (2D)">
-      <rect x="0" y="210" width="400" height="50" fill="#dfe7e4" />
+      <rect x="0" y="210" width="400" height="50" fill="#d8e2ee" />
       <Arm joints={joints} x={200} y={200} s={1.9} />
       <text x="16" y="26" fill={C.text} fontSize="14" fontWeight="700">조립 로봇 · 측면도 (실시간 관절각)</text>
       <text x="16" y="46" fill={C.sub} fontSize="11">{joints.map((v, i) => `J${i + 1} ${v.toFixed(0)}°`).join('  ')}</text>

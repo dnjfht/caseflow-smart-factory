@@ -1,12 +1,12 @@
-.select-menu{position:relative;min-width:0;color:#263d3d}
-.select-menu-trigger{width:100%;min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #d1e1dd;border-radius:8px;background:#fff;color:inherit;padding:9px 15px;text-align:left;font:600 12px 'DM Sans','Noto Sans KR',sans-serif;cursor:pointer}
+.select-menu{position:relative;min-width:0;color:#212227}
+.select-menu-trigger{width:100%;min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #c6d7ec;border-radius:8px;background:#fff;color:inherit;padding:9px 15px;text-align:left;font:600 12px 'DM Sans','Noto Sans KR',sans-serif;cursor:pointer}
 .select-menu-trigger span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.select-menu-trigger i{width:8px;height:8px;border-right:2px solid #488b76;border-bottom:2px solid #488b76;transform:translateY(-2px) rotate(45deg);flex:none}
-.select-menu-trigger:focus-visible{outline:2px solid #54b998;outline-offset:2px}
-.select-menu-trigger:disabled{color:#839793;background:#f9fbfa;cursor:not-allowed}
-.select-menu-options{position:absolute;z-index:30;top:calc(100% + 4px);left:0;right:0;max-height:250px;overflow:auto;padding:5px;border:1px solid #cbded6;border-radius:9px;background:#fff;box-shadow:0 12px 32px #17343f24}
-.select-menu-options button{display:block;width:100%;border:0;border-radius:6px;background:transparent;color:#2a4a48;text-align:left;padding:10px 11px;font:500 12px 'DM Sans','Noto Sans KR',sans-serif;cursor:pointer;white-space:normal;overflow-wrap:anywhere}
-.select-menu-options button:hover,.select-menu-options button:focus-visible{background:#e8f5ee;outline:0}
-.select-menu-options button[aria-selected=true]{background:#d9f0e4;color:#146d52;font-weight:700}
-.mes-shell .select-menu .select-menu-trigger{border:1px solid #d1e1dd;background:#fff;color:#263d3d;padding:9px 15px}.mes-shell .select-menu .select-menu-trigger:disabled{background:#f9fbfa;color:#839793}.mes-shell .select-menu .select-menu-options button{border:0;background:transparent;color:#2a4a48;padding:10px 11px;text-align:left}.mes-shell .select-menu .select-menu-options button:hover,.mes-shell .select-menu .select-menu-options button:focus-visible{background:#e8f5ee}.mes-shell .select-menu .select-menu-options button[aria-selected=true]{background:#d9f0e4;color:#146d52}
+.select-menu-trigger i{width:8px;height:8px;border-right:2px solid #46668d;border-bottom:2px solid #46668d;transform:translateY(-2px) rotate(45deg);flex:none}
+.select-menu-trigger:focus-visible{outline:2px solid #5c8bb9;outline-offset:2px}
+.select-menu-trigger:disabled{color:#828c98;background:#f8fafc;cursor:not-allowed}
+.select-menu-options{position:absolute;z-index:30;top:calc(100% + 4px);left:0;right:0;max-height:250px;overflow:auto;padding:5px;border:1px solid #cbd4de;border-radius:9px;background:#fff;box-shadow:0 12px 32px #1c1e2224}
+.select-menu-options button{display:block;width:100%;border:0;border-radius:6px;background:transparent;color:#26282d;text-align:left;padding:10px 11px;font:500 12px 'DM Sans','Noto Sans KR',sans-serif;cursor:pointer;white-space:normal;overflow-wrap:anywhere}
+.select-menu-options button:hover,.select-menu-options button:focus-visible{background:#f2f6f9;outline:0}
+.select-menu-options button[aria-selected=true]{background:#e3ebf3;color:#2a2d33;font-weight:700}
+.mes-shell .select-menu .select-menu-trigger{border:1px solid #c6d7ec;background:#fff;color:#212227;padding:9px 15px}.mes-shell .select-menu .select-menu-trigger:disabled{background:#f8fafc;color:#828c98}.mes-shell .select-menu .select-menu-options button{border:0;background:transparent;color:#26282d;padding:10px 11px;text-align:left}.mes-shell .select-menu .select-menu-options button:hover,.mes-shell .select-menu .select-menu-options button:focus-visible{background:#f2f6f9}.mes-shell .select-menu .select-menu-options button[aria-selected=true]{background:#e3ebf3;color:#2a2d33}
 .mes-shell .select-menu .select-menu-trigger{min-height:44px}

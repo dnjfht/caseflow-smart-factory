@@ -64,4 +64,15 @@ class TwinGatewayTest {
   g.syncTwin("b",run(true,5));
   assertThat(g.sample().lineExit()).isEqualTo(3);
  }
+ @Test void aReloadedTwinCarriesOnCounting(){
+  TwinGateway g=new TwinGateway(); g.target(10); g.stop(false);
+  g.syncTwin("b",run(true,5)); assertThat(g.sample().lineExit()).isEqualTo(5);
+  g.syncTwin("b",run(false,0)); assertThat(g.sample().lineExit()).isEqualTo(5); // the page was reloaded
+  g.syncTwin("b",run(true,2)); assertThat(g.sample().lineExit()).isEqualTo(7);
+ }
+ @Test void aCopyJoiningARunningLineStartsToo(){
+  TwinGateway g=new TwinGateway(); g.target(3); g.stop(false);
+  g.syncField(run(true,1)); g.syncField(run(true,1));
+  assertThat(g.syncTwin("b",run(false,0)).pulses()).containsExactly("HmiStart");
+ }
 }

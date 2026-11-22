@@ -8,8 +8,8 @@ export function qualityJobs(lots:Row[]):QualityJob[]{
 }
 const pct=(v:number)=>`${Math.round(v)}%`
 function Ring({label,value,bad=false}:{label:string;value:number;bad?:boolean}){
-  const color=bad?'#d8755d':'#4cad84'
-  return <div className="qc-ring-wrap"><div className="qc-ring" style={{background:`conic-gradient(${color} ${Math.max(0,Math.min(100,value))}%, #e7eeeb 0)`}}><div><strong>{pct(value)}</strong><span>{label}</span></div></div></div>
+  const color=bad?'#d8755d':'#5180af'
+  return <div className="qc-ring-wrap"><div className="qc-ring" style={{background:`conic-gradient(${color} ${Math.max(0,Math.min(100,value))}%, #e2eaf3 0)`}}><div><strong>{pct(value)}</strong><span>{label}</span></div></div></div>
 }
 function Plot({jobs,kind}:{jobs:QualityJob[];kind:'stack'|'good'|'bad'}){
   const width=620,left=42,right=16,top=19,plotW=width-left-right,plotH=170
@@ -36,9 +36,9 @@ function Plot({jobs,kind}:{jobs:QualityJob[];kind:'stack'|'good'|'bad'}){
   const points=jobs.map((j,i)=>`${x(i)},${y(value(j))}`).join(' ')
   const ticks=max<=5?Array.from({length:max+1},(_,i)=>i):[0,.25,.5,.75,1].map(t=>Math.round(max*t))
   return <svg className="qc-plot" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={kind==='stack'?'작업별 전체 생산량 중 양품과 불량의 수량':kind==='good'?'작업 순서별 양품 수량 선 그래프':'작업 순서별 불량 수량 선 그래프'}>
-    {ticks.map(t=><g key={t}><line x1={left} x2={width-right} y1={y(t)} y2={y(t)} stroke="#e3eae8"/><text x={left-8} y={y(t)+4} textAnchor="end" className="qc-axis">{t}</text></g>)}
-    {jobs.map((j,i)=><g key={`${j.code}-${i}`}><line x1={x(i)} x2={x(i)} y1={top} y2={top+plotH} stroke="#edf2f0"/><text x={x(i)} y={top+plotH+18} textAnchor="middle" className="qc-axis">{labels[i].map((line,number)=><tspan key={number} x={x(i)} dy={number?15:0}>{line}</tspan>)}</text><title>{`${j.code}: 양품 ${j.good}개, 불량 ${j.bad}개`}</title></g>)}
-    {kind==='stack'&&jobs.map((j,i)=>{const barW=Math.min(44,plotW/Math.max(1,jobs.length)*.54);return <g key={`${j.code}-${i}`}><rect x={x(i)-barW/2} y={y(j.good)} width={barW} height={Math.max(0,top+plotH-y(j.good))} fill="#4cad84"/><rect x={x(i)-barW/2} y={y(j.total)} width={barW} height={Math.max(0,y(j.good)-y(j.total))} fill="#d8755d"/><text x={x(i)} y={Math.max(top+10,y(j.total)-6)} textAnchor="middle" className="qc-value">{j.total}</text></g>})}
+    {ticks.map(t=><g key={t}><line x1={left} x2={width-right} y1={y(t)} y2={y(t)} stroke="#dde6f0"/><text x={left-8} y={y(t)+4} textAnchor="end" className="qc-axis">{t}</text></g>)}
+    {jobs.map((j,i)=><g key={`${j.code}-${i}`}><line x1={x(i)} x2={x(i)} y1={top} y2={top+plotH} stroke="#e9eff6"/><text x={x(i)} y={top+plotH+18} textAnchor="middle" className="qc-axis">{labels[i].map((line,number)=><tspan key={number} x={x(i)} dy={number?15:0}>{line}</tspan>)}</text><title>{`${j.code}: 양품 ${j.good}개, 불량 ${j.bad}개`}</title></g>)}
+    {kind==='stack'&&jobs.map((j,i)=>{const barW=Math.min(44,plotW/Math.max(1,jobs.length)*.54);return <g key={`${j.code}-${i}`}><rect x={x(i)-barW/2} y={y(j.good)} width={barW} height={Math.max(0,top+plotH-y(j.good))} fill="#5180af"/><rect x={x(i)-barW/2} y={y(j.total)} width={barW} height={Math.max(0,y(j.good)-y(j.total))} fill="#d8755d"/><text x={x(i)} y={Math.max(top+10,y(j.total)-6)} textAnchor="middle" className="qc-value">{j.total}</text></g>})}
     {kind!=='stack'&&<><polyline points={points} fill="none" stroke={color} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round"/>{jobs.map((j,i)=><circle key={`${j.code}-${i}`} cx={x(i)} cy={y(value(j))} r="4" fill={color}><title>{`${j.code}: ${value(j)}개`}</title></circle>)}</>}
     <text x={width/2} y={height-7} textAnchor="middle" className="qc-axis">작업지시 · 왼쪽에서 오른쪽</text>
   </svg>

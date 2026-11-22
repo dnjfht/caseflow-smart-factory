@@ -53,6 +53,7 @@ public class TwinGateway implements PlcGateway {
     private Side recordSide;
     private final int[] lastCount = new int[COUNTERS.length];
     private final int[] offset = new int[COUNTERS.length];
+    private final int[] lastRaw = new int[COUNTERS.length];
 
     public record SyncReply(boolean lease, Map<String, Object> writes, List<String> pulses, int resetSeq, int programSeq,
         boolean fieldConnected, Map<String, Object> tags) { }
@@ -60,7 +61,10 @@ public class TwinGateway implements PlcGateway {
     /** a browser's twin reports; the lease holder's twin is a live copy of the line */
     public synchronized SyncReply syncTwin(String session, Map<String, Object> reported) {
         Instant now = Instant.now();
-        if (holder == null || Duration.between(holderSeen, now).compareTo(LEASE) > 0) holder = session;
+        if (holder == null || Duration.between(holderSeen, now).compareTo(LEASE) > 0) {
+            if (holder != null && !holder.equals(session)) twin.runLatch = null; // a different browser (or a reload) now drives
+            holder = session;
+        }
         boolean lease = session != null && session.equals(holder);
         if (!lease) return new SyncReply(false, Map.of(), List.of(), resetSeq.get(), programSeq.get(), field.fresh(now), lineTags(now));
         holderSeen = now;
@@ -88,6 +92,9 @@ public class TwinGateway implements PlcGateway {
                 Object otherLatch = other.tags.get("RunLatch");
                 if (!on.equals(otherLatch)) other.pulses.add(on ? "HmiStart" : "HmiStop");
             }
+            // a copy (re)joining while the other runs - a reloaded page, a field PC coming online - joins in running
+            if (self.runLatch == null && !on && other.fresh(now) && Boolean.TRUE.equals(other.runLatch)
+                && Boolean.TRUE.equals(desired.get("MesPermit"))) self.pulses.add("HmiStart");
             self.runLatch = on;
         }
     }
@@ -128,6 +135,9 @@ public class TwinGateway implements PlcGateway {
         if (line == null) return PlcSnapshot.offline("현장 연결 대기: MES 화면(웹 트윈) 또는 현장 PC(OIP)가 연결되면 가동됩니다");
         Map<String, Object> t = line.tags;
         int[] c = new int[COUNTERS.length];
+        // the same copy counting from lower than before restarted (a reloaded page): re-baseline as on a switch
+        boolean restarted = line == recordSide && (num(t, "LaunchedCount") < lastRaw[0] || num(t, "ShippedCount") < lastRaw[3]);
+        if (restarted) for (int i = 0; i < c.length; i++) offset[i] = lastCount[i] - num(t, COUNTERS[i]);
         if (line != recordSide) {
             // the other copy took over (field PC connected or dropped): carry on from the counts already reported,
             // so the switch reads as neither lost nor repeated production
@@ -139,7 +149,7 @@ public class TwinGateway implements PlcGateway {
             }
             recordSide = line;
         }
-        for (int i = 0; i < c.length; i++) { c[i] = Math.max(0, num(t, COUNTERS[i]) + offset[i]); lastCount[i] = c[i]; }
+        for (int i = 0; i < c.length; i++) { lastRaw[i] = num(t, COUNTERS[i]); c[i] = Math.max(0, lastRaw[i] + offset[i]); lastCount[i] = c[i]; }
         return new PlcSnapshot(true, fieldLine ? "현장 PC OIP 연결 (웹 트윈 동기)" : "웹 트윈 PLC 연결", line.seen,
             num(t, "TargetQuantity"), c[0], c[1], c[2], c[3],
             num(t, "MachineState"), num(t, "AssemblyPhase"), num(t, "InspectionPhase"), num(t, "PackingPhase"),
@@ -166,6 +176,7 @@ public class TwinGateway implements PlcGateway {
         recordSide = null;
         java.util.Arrays.fill(lastCount, 0);
         java.util.Arrays.fill(offset, 0);
+        java.util.Arrays.fill(lastRaw, 0);
     }
     @Override public long resetTimeoutMs() { return 25000; }
     @Override public void close() { }

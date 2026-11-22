@@ -1,4 +1,6 @@
-# CASEFLOW | 소형 케이스 조립·검사·포장 MES
+<p align="center"><img src="images/brand/caseflow-logo-full.png" alt="CaseFlow MES — Plastic Case Assembly" width="260"></p>
+
+# CaseFlow MES | 소형 케이스 조립·검사·포장 MES
 
 본체와 뚜껑을 반복 공급하고 로봇으로 조립한 뒤, 검사 결과에 따라 불량품을 분류하거나 양품을 포장·출고하는 공정입니다. 작업지시의 **목표 양품 수량**에 도달할 때까지 불량품 수만큼 다음 세트를 보충합니다.
 
