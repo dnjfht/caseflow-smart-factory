@@ -122,14 +122,14 @@ declared.
 
 | Tag | Direction | ST type | Part | Parameter |
 |---|---|---|---|---|
-| `%IX0.0` | program reads | BOOL | Start PB IX0.0 (`oip.push-button`) | `tag` |
+| `%IX0.0` | program reads | BOOL | Start PB IX0.0 (허가 시 점등) (`oip.push-button`) | `tag` |
 | `%IX0.1` | program reads | BOOL | Stop PB IX0.1 (`oip.push-button`) | `tag` |
 | `%IX0.2` | program reads | BOOL | Body Detected IX0.2 (`oip.diffuse-sensor`) | `tag` |
 | `%IX0.3` | program reads | BOOL | Lid Detected IX0.3 (`oip.diffuse-sensor`) | `tag` |
 | `%IX0.4` | program reads | BOOL | Body Assembly IX0.4 (`oip.diffuse-sensor`) | `tag` |
 | `%IX0.5` | program reads | BOOL | Lid Assembly IX0.5 (`oip.diffuse-sensor`) | `tag` |
-| `%IX0.6` | program reads | BOOL | Assembly Robot - pick lid and place (`oip.six-axis-robot`) | `doneTag` |
-| `%IX0.7` | program reads | BOOL | Assembly Robot - pick lid and place (`oip.six-axis-robot`) | `out1Tag` |
+| `%IX0.6` | program reads | BOOL | Assembly Robot - Neuromeka Indy7 (`neuromeka.indy7`) | `doneTag` |
+| `%IX0.7` | program reads | BOOL | Assembly Robot - Neuromeka Indy7 (`neuromeka.indy7`) | `out1Tag` |
 | `%IX1.0` | program reads | BOOL | Assembled IX1.0 (`oip.diffuse-sensor`) | `tag` |
 | `%IX1.1` | program reads | BOOL | Inspection IX1.1 (`oip.diffuse-sensor`) | `tag` |
 | `%IX1.2` | program reads | BOOL | Reject IX1.2 (`oip.diffuse-sensor`) | `tag` |
@@ -142,7 +142,7 @@ declared.
 | `%IX2.2` | program reads | BOOL | SortEye (`oip.diffuse-sensor`) | `tag` |
 | `%IX2.3` | program reads | BOOL | AssemblyCell (`factory.case-cell`) | `readyTag` |
 | `%IX2.4` | program reads | BOOL | AssemblyCell (`factory.case-cell`) | `doneTag` |
-| `%QW2` | program writes | INT | Assembly Robot - pick lid and place (`oip.six-axis-robot`) | `commandTag` |
+| `%QW2` | program writes | INT | Assembly Robot - Neuromeka Indy7 (`neuromeka.indy7`) | `commandTag` |
 | `%QW3` | program writes | INT | ShippingTruckMES (`factory.dispatch-truck`) | `loadTag` |
 | `%QW4` | program writes | INT | ShippingTruckMES (`factory.dispatch-truck`) | `targetTag` |
 | `%QW5` | program writes | INT | BodyRackMES (`factory.stock-display`) | `stockTag` |
@@ -153,7 +153,7 @@ declared.
 | `%QX0.3` | program writes | BOOL | Lid Feed (`oip.box-spawner`) | `runTag` |
 | `%QX0.4` | program writes | BOOL | Body Stopper QX0.4 (`oip.blade-stop`) | `tag` |
 | `%QX0.5` | program writes | BOOL | Lid Stopper QX0.5 (`oip.blade-stop`) | `tag` |
-| `%QX0.6` | program writes | BOOL | Assembly Robot - pick lid and place (`oip.six-axis-robot`) | `executeTag` |
+| `%QX0.6` | program writes | BOOL | Assembly Robot - Neuromeka Indy7 (`neuromeka.indy7`) | `executeTag` |
 | `%QX0.6` | program writes | BOOL | AssemblyCell (`factory.case-cell`) | `startTag` |
 | `%QX0.7` | program writes | BOOL | 03 Assembly Out (`oip.belt-conveyor`) | `runTag` |
 | `%QX1.0` | program writes | BOOL | 04 Inspection Conveyor (`oip.belt-conveyor`) | `runTag` |
@@ -163,7 +163,7 @@ declared.
 | `%QX1.4` | program writes | BOOL | 06 Finished Goods Conveyor (`oip.belt-conveyor`) | `runTag` |
 | `%QX1.5` | program writes | BOOL | 07 Shipping Conveyor (`oip.belt-conveyor`) | `runTag` |
 
-_(+2 more tags not listed. Read the scene file for the full set.)_
+_(+3 more tags not listed. Read the scene file for the full set.)_
 
 A tag the **program writes** is an output of your ST program: assign it. That is how you command a
 device. A tag the **program reads** is produced by the part (a sensor, a counter, a running flag): read
@@ -189,9 +189,10 @@ and fitted params, so you never compute guard offsets or beam ranges by hand.
 
 | Package | Name | Extent about its position (m) | Shape handles | Parameters you may set |
 |---|---|---|---|---|
-| `factory.case-cell` | Case Process Cell | x -0.36..0.36, y 0..0.45, z -1.56..1.56 | — | `mode`, `startTag`, `completeTag`, `readyTag`, `doneTag`, `validTag`, `goodTag`, `debugRunningTag`, `debugRobotTag`, `debugMainTag` |
+| `factory.case-cell` | Case Process Cell | x -0.36..0.36, y 0..0.45, z -1.01..1.01 | — | `mode`, `startTag`, `completeTag`, `readyTag`, `doneTag`, `validTag`, `goodTag`, `debugRunningTag`, `debugRobotTag`, `debugMainTag` |
 | `factory.dispatch-truck` | MES Dispatch Truck | x -2.1..2.1, y 0..2.3, z -0.75..0.75 | — | `loadTag`, `targetTag` |
 | `factory.stock-display` | MES Material Rack | x -0.65..0.65, y 0..1.6, z -0.4..0.4 | — | `stockTag`, `item` |
+| `neuromeka.indy7` | Neuromeka Indy7 | x -0.134..0.102, y 0.003..1.329, z -0.103..0.265 | — | `speed`, `accel`, `blendDeg`, `waypoints`, `blendWaypoints`, `jobs`, `pose`, `commandTag`, `executeTag`, `doneTag`, `enableTag`, `gripperTag`, `in1Tag`, `out1Tag`, `in2Tag`, `out2Tag`, `in3Tag`, `out3Tag`, `in4Tag`, `out4Tag`, `tool`, `toolSizeX`, `toolSizeZ`, `cupPitchX`, `cupPitchZ`, `cupMarginX`, `cupMarginZ`, `cupsEnabled` |
 | `oip.belt-conveyor` | Belt Conveyor | x -0.085..4.085, y -0.17..0.05, z -0.4..0.4 | `segments` (rows of [run, tilt]), `width` (width) | `shapePreset`, `segments`, `width`, `height`, `standHeight`, `fpmUnits`, `speedFpm`, `speed`, `accelTime`, `decelTime`, `friction`, `beltColor`, `beltTexture`, `frameRails`, `leftGuard`, `rightGuard`, `guardOpenings`, `legs`, `tailLeg`, `tailLegOffset`, `tailLegClearance`, `headLeg`, `headLegOffset`, `headLegClearance`, `middleLegs`, `legSpacing`, `exclusionStart`, `exclusionEnd`, `speedTag`, `speedFpmTag`, `runTag`, `runningTag`, `speedAt30`, `speedAt30Fpm`, `velocityTag`, `inchesPerPulse`, `pulseTag`, `encoderTag` |
 | `oip.blade-stop` | Blade Stop | x -0.1..0.1, y -0.529..0.5, z -1..1 | — | `width`, `active`, `raiseHeight`, `airPressureHeight`, `tag` |
 | `oip.box-spawner` | Spawner | x -0.25..0.25, y -0.46..0.5, z -0.25..0.25 | — | `boxesPerMinute`, `fixedRate`, `product`, `boxColor`, `boxColors`, `mixAttribute`, `mixValues`, `randomColors`, `length`, `width`, `height`, `randomSize`, `mass`, `disable`, `release`, `keepSpacing`, `conveyorId`, `runTag`, `countTag` |
@@ -199,7 +200,7 @@ and fitted params, so you never compute guard offsets or beam ranges by hand.
 | `oip.diffuse-sensor` | Photo Eye | x -0.022..0.023, y 0..0.16, z -0.036..0.037 | — | `maxRange`, `mode`, `showBeam`, `normallyClosed`, `mark`, `tag` |
 | `oip.diverter` | Diverter | x -0.365..0.365, y -0.385..0.66, z -1.103..0.249 | — | `diverted`, `divertTime`, `divertDistance`, `standHeight`, `tag` |
 | `oip.push-button` | Push Button | x -0.045..0.045, y 0..0.09, z -0.03..0.03 | — | `emergencyStop`, `text`, `buttonColor`, `momentary`, `startPressed`, `startStruck`, `normallyClosed`, `lampSource`, `tag`, `lampTag` |
-| `oip.six-axis-robot` | Six-Axis Robot | x -0.94..0.94, y 0..3.49, z -0.415..0.415 | — | `speed`, `accel`, `scale`, `tool`, `toolSizeX`, `toolSizeZ`, `cupPitchX`, `cupPitchZ`, `cupMarginX`, `cupMarginZ`, `cupsEnabled`, `commandTag`, `executeTag`, `doneTag`, `enableTag`, `gripperTag`, `in1Tag`, `in2Tag`, `in3Tag`, `in4Tag`, `out1Tag`, `out2Tag`, `out3Tag`, `out4Tag`, `waypoints`, `blendWaypoints`, `blendDeg`, `jobs`, `pose` |
+| `oip.shape` | Shape | x -0.18..0.18, y 0..0.85, z -0.18..0.18 | `length` (length), `width` (width), `height` (height) | `shape`, `length`, `width`, `height`, `sides`, `color`, `solid` |
 
 **Read the extent column before you place anything.** It is measured from the first instance of that
 package already in this scene, and it is where most placement mistakes come from: a part is a VOLUME,
@@ -215,7 +216,7 @@ size (a chain transfer sets its own lane count and length), so read the paramete
 
 ## What is in the scene now
 
-35 parts:
+36 parts:
 
 | Package / type | Count |
 |---|---|
@@ -228,8 +229,9 @@ size (a chain transfer sets its own lane count and length), so read the paramete
 | `oip.despawner` | 2 |
 | `oip.push-button` | 2 |
 | `factory.dispatch-truck` | 1 |
+| `neuromeka.indy7` | 1 |
 | `oip.diverter` | 1 |
-| `oip.six-axis-robot` | 1 |
+| `oip.shape` | 1 |
 
 ## Writing the Structured Text program
 
