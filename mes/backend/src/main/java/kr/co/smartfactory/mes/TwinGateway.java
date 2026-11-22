@@ -179,5 +179,12 @@ public class TwinGateway implements PlcGateway {
         java.util.Arrays.fill(lastRaw, 0);
     }
     @Override public long resetTimeoutMs() { return 25000; }
+    @Override public synchronized void resumeRun(boolean permitted, int target, int launched, int rejected, int packed, int exit) {
+        desired.put("MesPermit", permitted);
+        desired.put("TargetQuantity", target);
+        int[] counts = {launched, rejected, packed, exit};
+        System.arraycopy(counts, 0, lastCount, 0, counts.length);
+        recordSide = new Side(); // whichever copy reports first is a take-over: its counts continue from these
+    }
     @Override public void close() { }
 }

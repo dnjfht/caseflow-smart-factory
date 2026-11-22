@@ -75,4 +75,13 @@ class TwinGatewayTest {
   g.syncField(run(true,1)); g.syncField(run(true,1));
   assertThat(g.syncTwin("b",run(false,0)).pulses()).containsExactly("HmiStart");
  }
+ @Test void aRestartedMesPicksUpTheOrderInProgress(){
+  TwinGateway g=new TwinGateway();
+  g.resumeRun(true,52,34,16,16,15); // the MES came back (a deploy) during a running order
+  var reply=g.syncField(run(true,15));
+  assertThat(reply.writes().get("MesPermit")).isEqualTo(true);
+  assertThat(reply.pulses()).isEmpty();
+  var s=g.sample(); assertThat(s.lineExit()).isEqualTo(15); assertThat(s.launched()).isEqualTo(34);
+  g.syncField(run(true,17)); assertThat(g.sample().lineExit()).isEqualTo(17);
+ }
 }

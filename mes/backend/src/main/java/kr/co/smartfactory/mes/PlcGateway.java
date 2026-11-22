@@ -20,5 +20,11 @@ public interface PlcGateway {
     void resetLine() throws Exception;
     /** how long a reset may take to show zero counters */
     default long resetTimeoutMs() { return 6000; }
+    /**
+     * After the MES itself restarts (a deploy), pick up the order in progress: its permit, its target and the counts
+     * already reported for this run, so the line neither stops nor reads as having started over.
+     * A PLC that keeps its own state (OPC UA) needs nothing.
+     */
+    default void resumeRun(boolean permitted, int target, int launched, int rejected, int packed, int exit) { }
     void close();
 }

@@ -55,6 +55,19 @@ public class MesService {
         }
     }
 
+    /** a restarted MES (a deploy) picks up the order in progress, so the line keeps its permit and its counts */
+    @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
+    public void resumeOrderInProgress() {
+        List<Map<String,Object>> rows = db.queryForList("SELECT * FROM mes_order WHERE status IN ('RUNNING','PAUSED') ORDER BY id DESC");
+        if (rows.isEmpty()) return;
+        Map<String,Object> o = rows.getFirst();
+        java.util.function.ToIntFunction<String> n = k -> o.get(k) instanceof Number v ? v.intValue() : 0;
+        plc.resumeRun("RUNNING".equals(o.get("STATUS")),
+            n.applyAsInt("TARGET_QTY") - n.applyAsInt("RUN_BASE_EXIT"),
+            n.applyAsInt("LAST_LAUNCHED") - n.applyAsInt("RUN_BASE_LAUNCHED"), n.applyAsInt("LAST_REJECTED") - n.applyAsInt("RUN_BASE_REJECTED"),
+            n.applyAsInt("LAST_PACKED") - n.applyAsInt("RUN_BASE_PACKED"), n.applyAsInt("LAST_EXIT") - n.applyAsInt("RUN_BASE_EXIT"));
+    }
+
     public void poll() {
         latest = plc.sample();
         if (latest.connected()) {
