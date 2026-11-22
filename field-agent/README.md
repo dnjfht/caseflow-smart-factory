@@ -11,3 +11,7 @@
 - **하는 일 (0.5초마다):** OIP의 PLC 태그를 MES로 보냄 → MES의 가동 허가·목표·자재 허가·재고 표시를 OIP에 씀 → 웹 트윈에서 누른 시작/정지를 OIP 버튼으로 누름 → 새 작업지시면 OIP 라인 초기화 → 티치펜던트에서 적용한 로봇 프로그램을 OIP 로봇에 반영.
 - **연결 중에는** OIP 데스크톱이 기준 라인입니다. MES 실적은 OIP의 수량으로 기록되고, 웹 트윈은 같은 명령을 받아 함께 돕니다.
 - 직접 실행: `node field-agent/caseflow-field-agent.mjs https://caseflow-mes-api.onrender.com`
+
+## PC를 켤 때 자동 실행
+
+`register-startup.bat`을 한 번 더블클릭하면 Windows 시작프로그램에 등록됩니다. 다음 로그인부터 20초 뒤 OIP 데스크톱이 켜지고 프로젝트를 열어 Play한 다음, 현장 에이전트 창이 열려 배포 MES와 연결됩니다. 해제는 `unregister-startup.bat`.
