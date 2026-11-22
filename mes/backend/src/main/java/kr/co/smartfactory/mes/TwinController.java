@@ -41,6 +41,10 @@ public class TwinController {
         return Map.of("pressed", request.key(), "fieldConnected", twin.fieldConnected());
     }
 
+    /** both copies of the line side by side, with their verdict sequences: is the twin following product for product? */
+    @GetMapping("/status")
+    public Map<String, Object> status() { return twin.status(); }
+
     /** the shop-floor PC's agent: OIP Desktop's tags in, the MES's writes and the operator panel's presses out */
     @PostMapping("/field-sync")
     public TwinGateway.SyncReply fieldSync(@RequestBody SyncRequest request) {

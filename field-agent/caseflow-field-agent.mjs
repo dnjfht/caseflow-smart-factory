@@ -13,12 +13,13 @@ const SERVER = (process.argv[2] ?? process.env.CASEFLOW_MES ?? 'https://caseflow
 const ROBOT_MODEL = 'neuromeka.indy7'
 const OIP = process.env.OIP_MCP_URL ?? 'http://127.0.0.1:5189/mcp'
 const ROBOT = 'AssemblyRobot'
-const TAGS = ['M0', 'RunLatch', 'MesPermit', 'MesMaterialPermit', 'WorkOrderActive', 'TargetQuantity', 'MachineState', 'FaultCode',
+let TAGS = ['M0', 'RunLatch', 'MesPermit', 'MesMaterialPermit', 'WorkOrderActive', 'TargetQuantity', 'MachineState', 'FaultCode',
   'LaunchedCount', 'RejectCount', 'ProducedCount', 'ShippedCount', 'AssemblyPhase', 'InspectionPhase', 'PackingPhase',
   'BodyConveyorRun', 'BodyStopper', 'LidStopper', 'RejectDiverter', 'RobotReady', 'PermitLamp', 'RunLamp', 'AlarmLamp',
   'BodyStockDisplay', 'LidStockDisplay',
   // the web twin follows this line: it launches when this one has and takes this line's verdict for each product
   'InspectedCount', 'LastVerdictGood']
+// the MES says which tags it wants (a reply's report list), so new ones need no new agent
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const stamp = () => new Date().toLocaleTimeString('ko-KR')
@@ -78,6 +79,7 @@ async function tick() {
   }
   const tags = state.tags ?? {}
   const reply = await mes('/api/twin/field-sync', { method: 'POST', body: JSON.stringify({ session: 'field', tags }) })
+  if (Array.isArray(reply.report) && reply.report.length) TAGS = reply.report
   if (lastReset === null) lastReset = reply.resetSeq
   else if (reply.resetSeq !== lastReset) {
     lastReset = reply.resetSeq
@@ -88,8 +90,10 @@ async function tick() {
     return
   }
   for (const [k, v] of Object.entries(reply.writes ?? {})) {
-    if (tags[k] !== v && (typeof v === 'boolean' || typeof v === 'number')) {
+    // only tags this OIP project's PLC has (an older project lacks newer ones)
+    if (k in tags && tags[k] !== v && (typeof v === 'boolean' || typeof v === 'number')) {
       await oip('set_tag', { name: k, value: v })
+      if (k === 'AiVerdictSeq') log(`AI 판정 #${v}: ${reply.writes.AiVerdictGood ? '양품' : '불량'}`)
       if (k === 'MesPermit') log(v ? 'MES 가동 허가 수신 → OIP에 MesPermit=TRUE' : 'MES 허가 해제 수신 → OIP에 MesPermit=FALSE')
     }
   }

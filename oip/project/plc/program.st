@@ -11,6 +11,10 @@ VAR_INPUT
   MirrorLaunchLimit : INT := 0; (* 현장 라인이 투입한 세트 수: 이 수만큼만 투입 *)
   MirrorVerdictReady : BOOL := FALSE; (* 현장 라인의 같은 순번 제품 판정이 도착함 *)
   MirrorVerdictGood : BOOL := FALSE; (* 그 판정: TRUE 양품, FALSE 불량 *)
+  AiMode : BOOL := FALSE; (* MES 비전 AI가 판정: 검사 셀의 자체 판정 대신 AI 판정을 기다려 쓴다 *)
+  AiVerdictSeq : INT := 0; (* AI 판정이 해당하는 제품 순번 (InspectedCount + 1과 같을 때만 사용) *)
+  AiVerdictGood : BOOL := FALSE; (* AI 판정: TRUE 양품, FALSE 불량 *)
+  AiRequest : BOOL := FALSE; (* 검사 위치에 제품 도착: MES에 AI 판정 요청 *)
 END_VAR
 VAR
   StartPB AT %IX0.0 : BOOL;
@@ -190,9 +194,13 @@ IF M0 THEN
     END_IF;
   ELSIF InspectionPhase = 1 THEN
     (* 미러 모드에서는 스스로 판정하지 않고, 현장 라인이 같은 순번 제품에 내린 판정이 올 때까지 기다려 그대로 쓴다 *)
-    IF (InspectionResultValidWord = 1) AND (NOT MirrorMode OR MirrorVerdictReady) THEN
+    (* AI 모드에서는 MES 비전 AI가 이 순번 제품에 내린 판정이 올 때까지 기다린다 (미러 모드가 우선) *)
+    IF (InspectionResultValidWord = 1) AND (NOT MirrorMode OR MirrorVerdictReady)
+       AND (MirrorMode OR NOT AiMode OR (AiVerdictSeq = InspectedCount + 1)) THEN
       M9 := TRUE;
-      IF MirrorMode THEN VerdictGood := MirrorVerdictGood; ELSE VerdictGood := (InspectionResultWord = 1); END_IF;
+      IF MirrorMode THEN VerdictGood := MirrorVerdictGood;
+      ELSIF AiMode THEN VerdictGood := AiVerdictGood;
+      ELSE VerdictGood := (InspectionResultWord = 1); END_IF;
       InspectedCount := InspectedCount + 1;
       LastVerdictGood := VerdictGood;
       IF VerdictGood THEN
@@ -208,6 +216,7 @@ IF M0 THEN
   END_IF;
 END_IF;
 InspectionWasHigh := InspectionDetected;
+AiRequest := M0 AND (InspectionPhase = 1) AND AiMode AND NOT MirrorMode;
 
 IF RejectDetected AND NOT RejectWasHigh AND RejectPending THEN
   M10 := TRUE;

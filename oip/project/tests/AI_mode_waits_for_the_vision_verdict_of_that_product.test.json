@@ -1,0 +1,88 @@
+{
+  "name": "AI mode waits for the vision verdict of that product",
+  "duration": 170,
+  "inputs": [
+    {
+      "at": 0,
+      "tag": "MesPermit",
+      "value": true
+    },
+    {
+      "at": 0,
+      "tag": "AiMode",
+      "value": true
+    },
+    {
+      "at": 0.1,
+      "tag": "HmiStart",
+      "value": true
+    },
+    {
+      "at": 0.4,
+      "tag": "HmiStart",
+      "value": false
+    },
+    {
+      "at": 62,
+      "tag": "AiVerdictGood",
+      "value": false
+    },
+    {
+      "at": 62,
+      "tag": "AiVerdictSeq",
+      "value": 1
+    },
+    {
+      "at": 70,
+      "tag": "AiVerdictGood",
+      "value": true
+    },
+    {
+      "at": 70,
+      "tag": "AiVerdictSeq",
+      "value": 2
+    }
+  ],
+  "checks": [
+    {
+      "at": 60,
+      "tag": "AiRequest",
+      "equals": true
+    },
+    {
+      "at": 60,
+      "tag": "InspectedCount",
+      "equals": 0
+    },
+    {
+      "at": 60,
+      "tag": "InspectionPhase",
+      "equals": 1
+    },
+    {
+      "at": 66,
+      "tag": "InspectedCount",
+      "equals": 1
+    },
+    {
+      "at": 66,
+      "tag": "LastVerdictGood",
+      "equals": false
+    },
+    {
+      "at": 66,
+      "tag": "AiRequest",
+      "equals": false
+    },
+    {
+      "at": 170,
+      "tag": "RejectCount",
+      "equals": 1
+    },
+    {
+      "at": 170,
+      "tag": "InspectedCount",
+      "min": 2
+    }
+  ]
+}

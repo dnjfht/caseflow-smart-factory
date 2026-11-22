@@ -173,3 +173,21 @@
 .hero .chips span{background:#ffffffb8;border-color:#ffffff;color:#1c2530}
 .hero-status{border-left-color:#0f111426}.hero-status small{color:#3b4a5c}.hero-status strong{color:#0b0d10}
 .metric,.card{border-color:#dde8f5;box-shadow:0 4px 14px #3f6fa20d}
+
+/* vision AI inspection */
+.ai-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:14px 0}
+.ai-kpis>div{background:#f3f8fc;border:1px solid #dbe8f3;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.ai-kpis b{font-size:22px;color:#14212e}
+.ai-kpis span{font-size:12px;color:#5b6b7c}
+.ai-kpis .bad b{color:#c0533b}
+.ai-model{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:14px}
+.ai-model>div{border-left:3px solid #5aa9e6;padding:4px 12px}
+.ai-model p{margin:4px 0 0;font-size:13px;color:#33475b}
+.ai-shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.ai-shots figure{margin:0;border:1px solid #dbe8f3;border-radius:12px;overflow:hidden;background:#fff}
+.ai-shots figure.miss{border:2px solid #d8755d}
+.ai-shots img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+.ai-shots figcaption{padding:8px 10px;display:flex;flex-direction:column;gap:2px;font-size:12px;color:#5b6b7c}
+.ai-shots strong{font-size:13px}
+.ai-shots strong.ok{color:#2f7d4f}
+.ai-shots strong.ng{color:#c0533b}

@@ -3,11 +3,14 @@ package kr.co.smartfactory.mes;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -42,8 +45,29 @@ public class TwinGateway implements PlcGateway {
         volatile Instant seen = Instant.EPOCH;
         volatile Boolean runLatch;
         final List<String> pulses = new ArrayList<>();
+        /** the vision AI's verdicts for this copy's products, by inspection number (1 = its first since it started) */
+        final Map<Integer, AiInspector.Verdict> ai = new HashMap<>();
+        int aiSeq;
+        boolean aiGood;
+        int aiInspected;
         boolean fresh(Instant now) { return Duration.between(seen, now).compareTo(STALE) <= 0; }
     }
+
+    /** the tags the field agent reads from OIP Desktop and reports (it takes this list from each reply) */
+    static final List<String> FIELD_TAGS = List.of("M0", "RunLatch", "MesPermit", "MesMaterialPermit", "WorkOrderActive",
+        "TargetQuantity", "MachineState", "FaultCode", "LaunchedCount", "RejectCount", "ProducedCount", "ShippedCount",
+        "AssemblyPhase", "InspectionPhase", "PackingPhase", "BodyConveyorRun", "BodyStopper", "LidStopper", "RejectDiverter",
+        "RobotReady", "PermitLamp", "RunLamp", "AlarmLamp", "BodyStockDisplay", "LidStockDisplay", "InspectedCount",
+        "LastVerdictGood", "AiRequest", "AiMode", "AiVerdictSeq", "AiVerdictGood");
+
+    private final AiInspector ai;
+
+    public TwinGateway() { this((AiInspector) null); }
+
+    @Autowired
+    public TwinGateway(ObjectProvider<AiInspector> ai) { this(ai.getIfAvailable()); }
+
+    TwinGateway(AiInspector ai) { this.ai = ai; }
 
     private final Side twin = new Side();
     private final Side field = new Side();
@@ -78,10 +102,14 @@ public class TwinGateway implements PlcGateway {
      * tags, for the operator panel.
      */
     public record SyncReply(boolean lease, Map<String, Object> writes, List<String> pulses, int resetSeq, int programSeq,
-        boolean fieldConnected, Map<String, Object> tags, Map<String, Object> mirror, int mirrorSeq) {
+        boolean fieldConnected, Map<String, Object> tags, Map<String, Object> mirror, int mirrorSeq, List<String> report) {
+        SyncReply(boolean lease, Map<String, Object> writes, List<String> pulses, int resetSeq, int programSeq,
+            boolean fieldConnected, Map<String, Object> tags, Map<String, Object> mirror, int mirrorSeq) {
+            this(lease, writes, pulses, resetSeq, programSeq, fieldConnected, tags, mirror, mirrorSeq, null);
+        }
         SyncReply(boolean lease, Map<String, Object> writes, List<String> pulses, int resetSeq, int programSeq,
             boolean fieldConnected, Map<String, Object> tags) {
-            this(lease, writes, pulses, resetSeq, programSeq, fieldConnected, tags, null, 0);
+            this(lease, writes, pulses, resetSeq, programSeq, fieldConnected, tags, null, 0, null);
         }
     }
 
@@ -107,6 +135,8 @@ public class TwinGateway implements PlcGateway {
             // set the desktop launched (its products are the desktop's, one for one, in launch order)
             int twinTarget = 30000; // far below INT max: the PLC adds the reject count to it
             w.put("MirrorMode", true);
+            w.put("AiMode", false);
+            recordTwinVerdicts();
             // the twin trails the desktop: when the desktop finishes and the MES withdraws the permit, the twin keeps it
             // until it has shipped what the desktop shipped, so it finishes its own last products instead of stopping short
             int twinLaunched = num(twin.tags, "LaunchedCount");
@@ -132,7 +162,9 @@ public class TwinGateway implements PlcGateway {
             twin.pulses.clear();
             return new SyncReply(true, w, press, resetSeq.get(), programSeq.get(), true, field.tags, Map.of(), mirrorSeq.get());
         }
-        return new SyncReply(true, writesFor(twin), drain(twin), resetSeq.get(), programSeq.get(), false, twin.tags, null, mirrorSeq.get());
+        Map<String, Object> w = writesFor(twin);
+        aiWrites(twin, w, "WEB_TWIN");
+        return new SyncReply(true, w, drain(twin), resetSeq.get(), programSeq.get(), false, twin.tags, null, mirrorSeq.get());
     }
 
     /** the shop-floor PC's agent reports OIP Desktop's tags */
@@ -144,7 +176,9 @@ public class TwinGateway implements PlcGateway {
         if (awaitingFieldReset && num(field.tags, "LaunchedCount") == 0 && num(field.tags, "InspectedCount") == 0) awaitingFieldReset = false;
         if (!awaitingFieldReset) recordVerdicts();
         if (comingOnline) { mirrorSeq.incrementAndGet(); rebaseMirror(); } // the twin clears its line and follows from here
-        return new SyncReply(true, writesFor(field), drain(field), resetSeq.get(), programSeq.get(), true, Map.of());
+        Map<String, Object> w = writesFor(field);
+        if (!awaitingFieldReset) aiWrites(field, w, "OIP_DESKTOP");
+        return new SyncReply(true, w, drain(field), resetSeq.get(), programSeq.get(), true, Map.of(), null, 0, FIELD_TAGS);
     }
 
     private void accept(Side self, Map<String, Object> reported, Instant now) {
@@ -162,6 +196,76 @@ public class TwinGateway implements PlcGateway {
 
     private void rebaseMirror() {
         launchBase = num(field.tags, "LaunchedCount");
+        twinVerdicts.clear();
+        twinVerdictBase = launchBase;
+    }
+
+    /** the mirroring twin's own verdicts, numbered as the desktop's, to check the two lines judged alike */
+    private final List<Boolean> twinVerdicts = new ArrayList<>();
+    private int twinVerdictBase;
+    private void recordTwinVerdicts() {
+        int n = num(twin.tags, "InspectedCount");
+        if (n < twinVerdicts.size()) twinVerdicts.clear();
+        while (twinVerdicts.size() < n) twinVerdicts.add(bool(twin.tags, "LastVerdictGood"));
+    }
+
+    /**
+     * The vision AI judges the line's products: a copy whose PLC asks for a verdict (AiRequest: a case is at the
+     * inspection cell) gets the AI's verdict for that product's number. Each product is judged once, and its verdict is
+     * kept until that copy starts over.
+     */
+    private void aiWrites(Side side, Map<String, Object> w, String source) {
+        // a PLC program from before the vision AI has no such inputs, and writing an unknown tag fails
+        if (!side.tags.containsKey("AiRequest")) return;
+        if (ai == null || !ai.ready()) { w.put("AiMode", false); return; }
+        w.put("AiMode", true);
+        int inspected = num(side.tags, "InspectedCount");
+        if (inspected < side.aiInspected) { side.ai.clear(); side.aiSeq = 0; } // that copy's PLC started over
+        side.aiInspected = inspected;
+        if (bool(side.tags, "AiRequest")) {
+            int next = inspected + 1;
+            AiInspector.Verdict v = side.ai.get(next);
+            if (v == null) {
+                try {
+                    v = ai.inspect(source);
+                    side.ai.put(next, v);
+                } catch (Exception e) {
+                    System.err.println("AI 판정 실패: " + e);
+                }
+            }
+            if (v != null) { side.aiSeq = next; side.aiGood = v.good(); }
+        }
+        w.put("AiVerdictSeq", side.aiSeq);
+        w.put("AiVerdictGood", side.aiGood);
+    }
+
+    /** where the two lines stand, for checking that the twin follows the desktop product for product */
+    public synchronized Map<String, Object> status() {
+        Instant now = Instant.now();
+        Map<String, Object> s = new LinkedHashMap<>();
+        s.put("fieldConnected", field.fresh(now));
+        s.put("twinConnected", twin.fresh(now));
+        s.put("aiReady", ai != null && ai.ready());
+        s.put("launchBase", launchBase);
+        for (String k : List.of("LaunchedCount", "InspectedCount", "RejectCount", "ShippedCount", "RunLatch", "MesPermit")) {
+            s.put("field." + k, field.tags.get(k));
+            s.put("twin." + k, twin.tags.get(k));
+        }
+        StringBuilder f = new StringBuilder(), t = new StringBuilder();
+        int mismatches = 0, compared = 0;
+        for (int i = 0; i < twinVerdicts.size(); i++) {
+            int fi = twinVerdictBase + i;
+            if (fi >= fieldVerdicts.size()) break;
+            compared++;
+            if (!fieldVerdicts.get(fi).equals(twinVerdicts.get(i))) mismatches++;
+        }
+        for (int i = Math.max(0, fieldVerdicts.size() - 40); i < fieldVerdicts.size(); i++) f.append(fieldVerdicts.get(i) ? 'G' : 'R');
+        for (int i = Math.max(0, twinVerdicts.size() - 40); i < twinVerdicts.size(); i++) t.append(twinVerdicts.get(i) ? 'G' : 'R');
+        s.put("fieldVerdicts", f.toString());
+        s.put("twinVerdicts", t.toString());
+        s.put("verdictsCompared", compared);
+        s.put("verdictMismatches", mismatches);
+        return s;
     }
 
     /** a start or stop pressed on the MES operator panel acts on the line: OIP Desktop if connected, else the twin */
@@ -177,8 +281,15 @@ public class TwinGateway implements PlcGateway {
     private Map<String, Object> writesFor(Side side) {
         Map<String, Object> w = new LinkedHashMap<>(desired);
         if (desired.get("TargetQuantity") instanceof Number t && recordSide != null) {
-            int remaining = Math.max(0, t.intValue() - lastCount[3]);
-            w.put("TargetQuantity", num(side.tags, "ShippedCount") + remaining);
+            if (side == recordSide) {
+                // the line of record: its own count plus the offset is the order's count, so the target is fixed. (Adding
+                // "what is still needed" to its live count instead raced the MES's sampling: the moment the last case
+                // shipped, the target briefly read one higher, so the line looked unfinished as it stopped.)
+                w.put("TargetQuantity", Math.max(0, t.intValue() - offset[3]));
+            } else {
+                int remaining = Math.max(0, t.intValue() - lastCount[3]);
+                w.put("TargetQuantity", num(side.tags, "ShippedCount") + remaining);
+            }
         }
         return w;
     }
@@ -248,6 +359,10 @@ public class TwinGateway implements PlcGateway {
         java.util.Arrays.fill(offset, 0);
         java.util.Arrays.fill(lastRaw, 0);
         fieldVerdicts.clear();
+        twinVerdicts.clear();
+        twinVerdictBase = 0;
+        field.ai.clear(); field.aiSeq = 0; field.aiInspected = 0;
+        twin.ai.clear(); twin.aiSeq = 0; twin.aiInspected = 0;
         launchBase = 0;
         awaitingFieldReset = true;
         twin.tags = Map.of();

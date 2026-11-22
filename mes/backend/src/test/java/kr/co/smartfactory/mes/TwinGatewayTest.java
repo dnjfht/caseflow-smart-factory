@@ -131,4 +131,47 @@ class TwinGatewayTest {
   assertThat(g.syncTwin("b",twin(true,2,1,1)).writes()).containsEntry("MesPermit",true);   // its 2nd set still on the line
   assertThat(g.syncTwin("b",twin(false,2,2,2)).writes()).containsEntry("MesPermit",false); // caught up
  }
+ /** a vision station that rejects every third case, counting how often it was asked */
+ static final class FakeAi extends AiInspector {
+  int asked;
+  FakeAi(){ super(null); }
+  @Override public boolean ready(){ return true; }
+  @Override public Verdict inspect(String source){
+   asked++;
+   boolean good=asked%3!=0;
+   return new Verdict(asked,asked,"OK_1.jpg",good?"OK":"SCRATCH",good?"OK":"SCRATCH",good?"OK":"SCRATCH",good,good?0.02:0.97,0.97,Map.of(),5,Instant.now());
+  }
+ }
+ static Map<String,Object> aiField(int inspected,boolean request){
+  Map<String,Object> t=field(true,inspected+1,inspected,true,0,5); t.put("AiRequest",request); return t;
+ }
+ @Test void theVisionAiJudgesEachProductOnceInOrder(){
+  FakeAi ai=new FakeAi(); TwinGateway g=new TwinGateway(ai); g.target(5); g.stop(false);
+  var r=g.syncField(aiField(0,false));
+  assertThat(r.writes()).containsEntry("AiMode",true).containsEntry("AiVerdictSeq",0);
+  assertThat(r.report()).contains("AiRequest","AiVerdictSeq");      // the agent learns which tags to report
+  r=g.syncField(aiField(0,true));                                    // case 1 at the inspection cell
+  assertThat(r.writes()).containsEntry("AiVerdictSeq",1).containsEntry("AiVerdictGood",true);
+  g.syncField(aiField(0,true)); g.syncField(aiField(0,true));         // the agent reports again before the PLC takes it
+  assertThat(ai.asked).isEqualTo(1);                                 // judged once, not per report
+  r=g.syncField(aiField(1,false));                                   // taken: the verdict stays until the next case
+  assertThat(r.writes()).containsEntry("AiVerdictSeq",1);
+  g.syncField(aiField(1,true)); r=g.syncField(aiField(2,true));
+  r=g.syncField(aiField(2,true));
+  assertThat(r.writes()).containsEntry("AiVerdictSeq",3).containsEntry("AiVerdictGood",false); // case 3 rejected
+  assertThat(ai.asked).isEqualTo(3);
+ }
+ @Test void anOlderPlcProgramGetsNoAiTags(){
+  TwinGateway g=new TwinGateway(new FakeAi()); g.target(5); g.stop(false);
+  var r=g.syncField(field(true,1,0,true,0,5));                       // no AiRequest: a project from before the AI
+  assertThat(r.writes()).doesNotContainKeys("AiMode","AiVerdictSeq","AiVerdictGood");
+ }
+ @Test void theMirroringTwinIsNeverAskedToJudge(){
+  FakeAi ai=new FakeAi(); TwinGateway g=new TwinGateway(ai); g.target(5); g.stop(false);
+  g.syncField(aiField(0,false));
+  Map<String,Object> t=twin(true,0,0,0); t.put("AiRequest",true);
+  var r=g.syncTwin("b",t);
+  assertThat(r.writes()).containsEntry("MirrorMode",true).containsEntry("AiMode",false);
+  assertThat(ai.asked).isZero();
+ }
 }
