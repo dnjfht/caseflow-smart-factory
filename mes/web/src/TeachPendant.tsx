@@ -18,7 +18,8 @@ export default function TeachPendant() {
   const { ready, tags } = useTwinTags(300)
   const link = useTwinLink()
   const viewer = link.mode === 'viewer'
-  const running = tags.M0 === true || (viewer && link.serverTags.M0 === true)
+  // the line's run state: OIP Desktop's when the field PC is connected (this twin only mirrors it then)
+  const running = tags.M0 === true || ((viewer || link.field) && link.serverTags.M0 === true)
   const [joints, setJoints] = useState<number[] | null>(null)
   const [inc, setInc] = useState(5)
   const [prog, setProg] = useState<Program | null>(null)

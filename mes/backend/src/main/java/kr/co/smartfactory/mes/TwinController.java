@@ -31,7 +31,17 @@ public class TwinController {
         return twin.syncTwin(request.session(), request.tags());
     }
 
-    /** the shop-floor PC's agent: OIP Desktop's tags in, the MES's writes and the other copy's presses out */
+    public record PressRequest(String key) { }
+
+    /** the operator panel's start/stop, pressed on the line (OIP Desktop when the field PC is connected) */
+    @PostMapping("/press")
+    public Map<String, Object> press(@RequestBody PressRequest request) {
+        try { twin.press(request.key()); }
+        catch (IllegalArgumentException e) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "HmiStart 또는 HmiStop만 누를 수 있습니다."); }
+        return Map.of("pressed", request.key(), "fieldConnected", twin.fieldConnected());
+    }
+
+    /** the shop-floor PC's agent: OIP Desktop's tags in, the MES's writes and the operator panel's presses out */
     @PostMapping("/field-sync")
     public TwinGateway.SyncReply fieldSync(@RequestBody SyncRequest request) {
         return twin.syncField(request.tags());

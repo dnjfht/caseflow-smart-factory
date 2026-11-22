@@ -13,6 +13,8 @@ export type CaseflowApi = {
   view(name: 'overview' | 'robot' | 'shipping', instant?: boolean): void
   write(key: string, value: boolean | number): string | null
   press(key: 'HmiStart' | 'HmiStop'): Promise<void>
+  /** force this twin's PLC outputs to another copy's (OIP Desktop), or null to hand them back to its own program */
+  mirror(values: Record<string, boolean | number> | null): void
   reset(): Promise<void>
   robot: {
     limits: [number, number][]
@@ -88,9 +90,17 @@ const SYNC_TAGS = ['M0', 'RunLatch', 'MesPermit', 'MesMaterialPermit', 'WorkOrde
 const session = Math.random().toString(36).slice(2)
 let lastReset: number | null = null
 let lastProgram: number | null = null
+let lastMirror: number | null = null
+let mirroring = false
 
 /** the arm on the line; a stored program taught on another arm (the earlier six-axis robot) is not applied to it */
 export const ROBOT_MODEL = 'neuromeka.indy7'
+
+/** press start/stop on the line: through the MES (it reaches OIP Desktop when the field PC is the line) */
+export async function pressLine(key: 'HmiStart' | 'HmiStop'): Promise<void> {
+  const r = await fetch('/api/twin/press', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key }) })
+  if (!r.ok) throw Error(`HTTP ${r.status}`)
+}
 
 /** the robot program last applied on any pendant, from the MES database */
 export async function loadRobotProgram(t: CaseflowApi) {
@@ -112,20 +122,27 @@ export function startTwinSync() {
       const tags = Object.fromEntries(SYNC_TAGS.filter((k) => k in all).map((k) => [k, all[k]]))
       const r = await fetch('/api/twin/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session, tags }) })
       if (!r.ok) throw Error(`HTTP ${r.status}`)
-      const reply = await r.json() as { lease: boolean; writes: Tags; pulses: string[]; resetSeq: number; programSeq: number; fieldConnected: boolean; tags: Tags }
+      const reply = await r.json() as { lease: boolean; writes: Tags; pulses: string[]; resetSeq: number; programSeq: number; fieldConnected: boolean; tags: Tags; mirror: Record<string, boolean | number> | null; mirrorSeq: number }
       if (!reply.lease) {
         // watching: keep this browser's own line idle so it never runs a second copy of the job
         if (all.MesPermit === true) t.write('MesPermit', false)
+        if (mirroring) { t.mirror(null); mirroring = false }
         setLink({ mode: 'viewer', serverTags: reply.tags, field: reply.fieldConnected, message: '다른 화면이 현장을 운전 중입니다. 이 화면은 관전 모드입니다.' })
         return
       }
       if (lastReset === null) lastReset = reply.resetSeq
       else if (reply.resetSeq !== lastReset) { lastReset = reply.resetSeq; await t.reset(); return }
+      // the field PC came online: clear this copy's line, then follow OIP Desktop
+      if (lastMirror === null) lastMirror = reply.mirrorSeq
+      else if (reply.mirrorSeq !== lastMirror) { lastMirror = reply.mirrorSeq; await t.reset(); return }
       for (const [k, v] of Object.entries(reply.writes)) if (all[k] !== v && (typeof v === 'boolean' || typeof v === 'number')) t.write(k, v)
-      // a start/stop pressed on OIP Desktop is pressed here too, so both copies run together
+      // with a field PC, OIP Desktop is the line and this twin moves with its PLC outputs; without one, this twin is the line
+      if (reply.mirror) { t.mirror(reply.mirror); mirroring = true }
+      else if (mirroring) { t.mirror(null); mirroring = false }
+      // a start/stop pressed on the MES operator panel while this twin is the line
       for (const key of reply.pulses ?? []) if (key === 'HmiStart' || key === 'HmiStop') await t.press(key)
       if (lastProgram !== reply.programSeq) { lastProgram = reply.programSeq; void loadRobotProgram(t) }
-      setLink({ mode: 'driver', serverTags: {}, field: reply.fieldConnected, message: '' })
+      setLink({ mode: 'driver', serverTags: reply.tags ?? {}, field: reply.fieldConnected, message: '' })
     } catch {
       setLink({ mode: 'offline', message: 'MES 서버에 연결 중입니다. (무료 서버는 처음 깨어나는 데 30초쯤 걸립니다)' })
     } finally { busy = false }

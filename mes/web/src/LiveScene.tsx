@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { Data } from './App'
 import { s } from './App'
 import { TwinSlot } from './TwinHost'
-import { isStaticSite, twin, useTwinLink, useTwinTags } from './twin'
+import { isStaticSite, pressLine, twin, useTwinLink, useTwinTags } from './twin'
 
 import './LiveScene.css'
 
@@ -13,26 +13,30 @@ export default function LiveScene({ data }: { data: Data; onUpdate: () => Promis
   const { ready, tags: localTags } = useTwinTags(400)
   const link = useTwinLink()
   const viewer = link.mode === 'viewer'
-  // a watcher shows the driving browser's line, not its own idle copy
-  const tags = viewer ? link.serverTags : localTags
+  // the panel shows THE line: OIP Desktop's PLC when the field PC is connected (this twin then only mirrors it),
+  // the driving browser's twin for a watcher, else this twin
+  const remote = (viewer || link.field) && Object.keys(link.serverTags).length > 0
+  const tags = remote ? link.serverTags : localTags
   const [notice, setNotice] = useState('')
   const active = data.orders.find(order => ['RUNNING', 'PAUSED'].includes(s(order, 'STATUS')))
+  // with no order in progress the panel keeps showing the last one, finished, rather than the line's leftover counters
+  const shown = active ?? data.orders.find(order => s(order, 'STATUS') !== 'CREATED')
   const permit = tags.MesPermit === true
   const running = tags.M0 === true
   const state = Number(tags.MachineState ?? 0)
   const num = (k: string) => Number(tags[k] ?? 0)
-  // counts shown are the line's, as the MES keeps them: a reloaded page restarts its own copy of the simulation from
-  // zero, but the order's production carries on from what the server has already counted
-  const line = !isStaticSite && data.plc.connected && active
-  const counts = line
-    ? { target: Number(s(active, 'TARGET_QTY')) || num('TargetQuantity'), launched: data.plc.launched, rejected: data.plc.rejected, packed: data.plc.packed, shipped: data.plc.lineExit }
+  // counts are the order's, as the MES records them - the same numbers as the overview, whichever copy of the line
+  // made them and however often a page was reloaded
+  const n = (k: string) => Number(s(shown!, k)) || 0
+  const counts = !isStaticSite && shown
+    ? { target: n('TARGET_QTY'), launched: n('LAST_LAUNCHED'), rejected: n('LAST_REJECTED'), packed: n('LAST_PACKED'), shipped: n('LAST_EXIT') }
     : { target: num('TargetQuantity'), launched: num('LaunchedCount'), rejected: num('RejectCount'), packed: num('ProducedCount'), shipped: num('ShippedCount') }
   async function press(key: 'HmiStart' | 'HmiStop') {
-    const t = twin()
-    if (!t) return
     setNotice('')
-    await t.press(key)
-    if (key === 'HmiStart' && !t.tags().MesPermit) setNotice('MES 가동 허가가 없어 시작되지 않았습니다. 작업 지시에서 가동을 허가하세요.')
+    if (key === 'HmiStart' && !permit) { setNotice('MES 가동 허가가 없어 시작되지 않습니다. 작업 지시에서 가동을 허가하세요.'); return }
+    // the line is pressed where it runs: OIP Desktop (through the MES) when the field PC is connected
+    if (remote) { await pressLine(key).catch(() => setNotice('MES 서버에 연결할 수 없어 누르지 못했습니다.')); return }
+    await twin()?.press(key)
   }
   function demoPermit(on: boolean) {
     twin()?.write('MesPermit', on)
@@ -43,7 +47,7 @@ export default function LiveScene({ data }: { data: Data; onUpdate: () => Promis
     <div className="live-scene-layout">
       <TwinSlot view="overview" />
       <div className="field-panel">
-        <div className="field-panel-head"><strong>현장 조작반</strong><small>{active ? s(active, 'ORDER_CODE') : '진행 중인 작업 없음'}</small></div>
+        <div className="field-panel-head"><strong>현장 조작반</strong><small>{active ? s(active, 'ORDER_CODE') : shown && !isStaticSite ? `직전 작업 ${s(shown, 'ORDER_CODE')} · ${s(shown, 'STATUS') === 'COMPLETE' ? '완료' : s(shown, 'STATUS')}` : '진행 중인 작업 없음'}</small></div>
         <div className="field-lamps">
           <div className={permit ? 'lamp on green' : 'lamp'}><i />MES 허가</div>
           <div className={running ? 'lamp on blue' : 'lamp'}><i />운전</div>
@@ -51,8 +55,8 @@ export default function LiveScene({ data }: { data: Data; onUpdate: () => Promis
         </div>
         <p className="field-state">{ready ? STATE[state] ?? `상태 ${state}` : '현장 제어기 연결 대기'}</p>
         <div className="field-buttons">
-          <button className="pb start" disabled={!ready || running || viewer} onClick={() => press('HmiStart')}>시작</button>
-          <button className="pb stop" disabled={!ready || !running || viewer} onClick={() => press('HmiStop')}>정지</button>
+          <button className="pb start" disabled={!ready || running} onClick={() => press('HmiStart')}>시작</button>
+          <button className="pb stop" disabled={!ready || !running} onClick={() => press('HmiStop')}>정지</button>
         </div>
         <dl className="field-counts">
           <div><dt>목표</dt><dd>{counts.target}</dd></div>
@@ -62,7 +66,7 @@ export default function LiveScene({ data }: { data: Data; onUpdate: () => Promis
           <div><dt>출하</dt><dd>{counts.shipped}</dd></div>
         </dl>
         {isStaticSite && <div className="field-demo"><small>공개 시연 · MES 서버 없이 실행 중</small><div><button disabled={!ready || permit} onClick={() => demoPermit(true)}>MES 허가 (시연)</button><button disabled={!ready || !permit} onClick={() => demoPermit(false)}>허가 해제</button></div></div>}
-        {!isStaticSite && <p className={link.field ? 'field-pc on' : 'field-pc'}>{link.field ? '현장 PC의 OIP 데스크톱 연결됨 · 시작·정지·허가가 양쪽에 함께 적용됩니다' : '현장 PC(OIP 데스크톱) 미연결 · 웹 트윈이 현장입니다'}</p>}
+        {!isStaticSite && <p className={link.field ? 'field-pc on' : 'field-pc'}>{link.field ? '현장 PC의 OIP 데스크톱이 실제 라인입니다 · 이 3D는 데스크톱 PLC 출력을 그대로 따라 움직이고, 시작·정지는 데스크톱에 눌립니다' : '현장 PC(OIP 데스크톱) 미연결 · 웹 트윈이 현장입니다'}</p>}
         {link.message && <p className="field-link">{link.message}</p>}
         {notice && <p className="field-notice" role="status">{notice}</p>}
       </div>

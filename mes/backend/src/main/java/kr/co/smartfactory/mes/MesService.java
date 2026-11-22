@@ -356,6 +356,9 @@ public class MesService {
             db.update("UPDATE production_plan SET status='COMPLETE' WHERE id IN " +
                 "(SELECT plan_id FROM plan_order WHERE order_id=?)",id);
             dispatched=target; loaded-=target; state="COMPLETE";
+            // the order is done: the MES withdraws the run permit, as the operator would with the permit-off button
+            try { plc.stop(true); } catch (Exception e) { throw new IllegalStateException("PLC 허가 해제 실패", e); }
+            event(id,"PERMIT_WITHDRAWN_ON_COMPLETE",target);
         }
         db.update("UPDATE mes_order SET last_launched=?,last_rejected=?,last_packed=?,last_exit=?,loaded_qty=?,dispatched_qty=?,status=? WHERE id=?",
             liveLaunched,liveRejected,livePacked,liveExit,loaded,dispatched,state,id);

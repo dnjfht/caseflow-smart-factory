@@ -12,18 +12,18 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
- * The line as the MES sees it on the server: up to two copies of the same virtual line, kept in step.
+ * The line as the MES sees it on the server. One copy of the virtual line is the line; the other, when there is one,
+ * follows it.
  * <ul>
  *   <li><b>Field</b>: OIP Desktop on the shop-floor PC, reached through the field agent
- *       ({@code field-agent/caseflow-field-agent.mjs}) posting to {@code /api/field/sync}. When it is connected it is
- *       the line of record: the MES counts its production.</li>
- *   <li><b>Web twin</b>: the same scene and program running in the browser that has the MES open
- *       ({@code /api/twin/sync}). One browser drives at a time (a lease); the others watch. Without a field PC it is
- *       the line of record.</li>
+ *       ({@code field-agent/caseflow-field-agent.mjs}, {@code /api/twin/field-sync}). When it is connected it IS the
+ *       line: its PLC runs the process and the MES counts its production.</li>
+ *   <li><b>Web twin</b>: the same scene running in the browser that has the MES open ({@code /api/twin/sync}). With a
+ *       field PC it is a mirror: its PLC outputs are forced to OIP Desktop's, so its conveyors, feeders, stoppers and
+ *       robot move as the desktop's do. Without one it is the line itself. One browser drives at a time (a lease).</li>
  * </ul>
- * Both copies get the MES's writes (permit, target, material permit and stock). A start or stop on either copy (its
- * run latch rising or falling) is pressed on the other as a pulse, so starting the line in the browser starts OIP
- * Desktop and the other way round. A new work order resets both; a robot program applied on the pendant goes to both.
+ * A start or stop pressed anywhere (the MES operator panel, OIP Desktop's buttons) acts on the one line, so the two
+ * screens never run two separate productions.
  */
 @Component
 @ConditionalOnProperty(name = "mes.plc.mode", havingValue = "twin")
@@ -55,8 +55,26 @@ public class TwinGateway implements PlcGateway {
     private final int[] offset = new int[COUNTERS.length];
     private final int[] lastRaw = new int[COUNTERS.length];
 
+    /** OIP Desktop's PLC outputs a mirroring twin is forced to */
+    static final List<String> OUTPUTS = List.of("BodyConveyorRun", "LidConveyorRun", "BodyFeedEnable", "LidFeedEnable",
+        "BodyStopper", "LidStopper", "RobotStart", "AssemblyOutRun", "InspectionConveyorRun", "RejectDiverter",
+        "PackingConveyorRun", "PackStart", "FinishedGoodsConveyorRun", "ShippingConveyorRun", "AlarmLamp", "InspectionStart",
+        "RobotReleasedSignal", "PermitLamp", "RunLamp", "RobotCommand", "TruckLoadVisual", "TruckTargetVisual",
+        "BodyStockVisual", "LidStockVisual");
+    private final AtomicInteger mirrorSeq = new AtomicInteger();
+
+    /**
+     * {@code mirror}: the outputs to force on a twin that follows OIP Desktop, else null. {@code mirrorSeq} moves when
+     * the twin should clear its line before it starts following (the field PC came online). {@code tags}: the line's
+     * tags, for the operator panel.
+     */
     public record SyncReply(boolean lease, Map<String, Object> writes, List<String> pulses, int resetSeq, int programSeq,
-        boolean fieldConnected, Map<String, Object> tags) { }
+        boolean fieldConnected, Map<String, Object> tags, Map<String, Object> mirror, int mirrorSeq) {
+        SyncReply(boolean lease, Map<String, Object> writes, List<String> pulses, int resetSeq, int programSeq,
+            boolean fieldConnected, Map<String, Object> tags) {
+            this(lease, writes, pulses, resetSeq, programSeq, fieldConnected, tags, null, 0);
+        }
+    }
 
     /** a browser's twin reports; the lease holder's twin is a live copy of the line */
     public synchronized SyncReply syncTwin(String session, Map<String, Object> reported) {
@@ -68,44 +86,41 @@ public class TwinGateway implements PlcGateway {
         boolean lease = session != null && session.equals(holder);
         if (!lease) return new SyncReply(false, Map.of(), List.of(), resetSeq.get(), programSeq.get(), field.fresh(now), lineTags(now));
         holderSeen = now;
-        accept(twin, field, reported, now);
-        return new SyncReply(true, writesFor(twin), drain(twin), resetSeq.get(), programSeq.get(), field.fresh(now), Map.of());
+        accept(twin, reported, now);
+        if (field.fresh(now)) {
+            Map<String, Object> mirror = new LinkedHashMap<>();
+            for (String k : OUTPUTS) if (field.tags.get(k) != null) mirror.put(k, field.tags.get(k));
+            twin.pulses.clear();
+            return new SyncReply(true, new LinkedHashMap<>(desired), List.of(), resetSeq.get(), programSeq.get(), true,
+                field.tags, mirror, mirrorSeq.get());
+        }
+        return new SyncReply(true, writesFor(twin), drain(twin), resetSeq.get(), programSeq.get(), false, twin.tags, null, mirrorSeq.get());
     }
 
     /** the shop-floor PC's agent reports OIP Desktop's tags */
     public synchronized SyncReply syncField(Map<String, Object> reported) {
         Instant now = Instant.now();
-        accept(field, twin, reported, now);
+        if (!field.fresh(now)) mirrorSeq.incrementAndGet(); // coming online: the twin clears its line and follows this one
+        accept(field, reported, now);
         return new SyncReply(true, writesFor(field), drain(field), resetSeq.get(), programSeq.get(), true, Map.of());
     }
 
-    private void accept(Side self, Side other, Map<String, Object> reported, Instant now) {
+    private void accept(Side self, Map<String, Object> reported, Instant now) {
         if (reported == null || reported.isEmpty()) return;
-        // a copy whose counters went back restarted its simulation (a reload, OIP Desktop re-reading the project):
-        // its latch dropping is not a stop button, and it rejoins like a copy coming online
-        if (num(reported, "LaunchedCount") < num(self.tags, "LaunchedCount")) self.runLatch = null;
         self.tags = Map.copyOf(reported);
         self.seen = now;
-        Object latch = reported.get("RunLatch");
-        if (latch instanceof Boolean on) {
-            // an edge on this copy is a button press on the other copy; the first report sets the baseline
-            // a copy that stops because it reached its target has finished, not been stopped: the other copy finishes its own
-            boolean finished = !on && num(reported, "TargetQuantity") > 0 && num(reported, "ShippedCount") >= num(reported, "TargetQuantity");
-            if (self.runLatch != null && !self.runLatch.equals(on) && other.fresh(now) && !finished) {
-                Object otherLatch = other.tags.get("RunLatch");
-                if (!on.equals(otherLatch)) other.pulses.add(on ? "HmiStart" : "HmiStop");
-            }
-            // a copy (re)joining while the other runs - a reloaded page, a field PC coming online - joins in running
-            if (self.runLatch == null && !on && other.fresh(now) && Boolean.TRUE.equals(other.runLatch)
-                && Boolean.TRUE.equals(desired.get("MesPermit"))) self.pulses.add("HmiStart");
-            self.runLatch = on;
-        }
+        if (reported.get("RunLatch") instanceof Boolean on) self.runLatch = on;
+    }
+
+    /** a start or stop pressed on the MES operator panel acts on the line: OIP Desktop if connected, else the twin */
+    public synchronized void press(String key) {
+        if (!"HmiStart".equals(key) && !"HmiStop".equals(key)) throw new IllegalArgumentException(key);
+        (field.fresh(Instant.now()) ? field : twin).pulses.add(key);
     }
 
     /**
-     * The MES writes for one copy. Its target is what it has shipped itself plus what the order still needs, so both
-     * copies stop when the order is done, not when each has made the whole order on its own; a copy that takes over
-     * mid-order then has exactly the rest to make.
+     * The MES writes for the line. Its target is what it has shipped itself plus what the order still needs, so a copy
+     * that takes over mid-order (the field PC came online or dropped out, a page was reloaded) makes exactly the rest.
      */
     private Map<String, Object> writesFor(Side side) {
         Map<String, Object> w = new LinkedHashMap<>(desired);

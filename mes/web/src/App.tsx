@@ -17,7 +17,7 @@ export const n=(r:Row,k:string)=>Number(field(r,k)??0)
 export const s=(r:Row,k:string)=>String(field(r,k)??'')
 const names:Record<Page,string>={home:'운영 현황',planning:'생산 계획',orders:'작업 지시',materials:'자재 입고 · 재고',trace:'생산 LOT · 추적',quality:'품질 분석',shipping:'출고 관리',process:'공정 · 3D 현장',equipment:'설비 · 로봇',events:'이벤트 이력'}
 const menus:Page[]=['home','planning','orders','materials','trace','quality','shipping','process','equipment','events']
-const eventNames:Record<string,string>={MATERIAL_CONSUMED:'본체·뚜껑 투입',REJECTED:'불량 분류',PACKED:'양품 포장',LOADED_DIGITAL:'차량 디지털 적재',TRUCK_DEPARTED_DIGITAL:'목표 수량 출고',PLC_COUNTER_RESET:'현장 누적 수량 초기화 감지'}
+const eventNames:Record<string,string>={PERMIT_WITHDRAWN_ON_COMPLETE:'목표 달성 · 가동 허가 자동 해제',ORDER_CLOSED_WITH_ACTUAL:'현재 실적으로 마감',MATERIAL_CONSUMED:'본체·뚜껑 투입',REJECTED:'불량 분류',PACKED:'양품 포장',LOADED_DIGITAL:'차량 디지털 적재',TRUCK_DEPARTED_DIGITAL:'목표 수량 출고',PLC_COUNTER_RESET:'현장 누적 수량 초기화 감지'}
 function route():Page {const hash=location.hash.slice(1) as Page;return menus.includes(hash)?hash:'home'}
 async function api(url:string,method='GET'){const r=await fetch(url,{method});if(!r.ok){const body=await r.json().catch(()=>({}));throw Error(body.detail||body.message||`HTTP ${r.status}`)}return r.json()}
 function CardTitle({eyebrow,title,aside}:{eyebrow:string;title:string;aside?:string}){return <div className="mes-title"><div><small>{eyebrow}</small><h2>{title}</h2></div>{aside&&<span>{aside}</span>}</div>}
@@ -98,6 +98,7 @@ export default function App(){
   const emptyMaterialTypes=['BODY','LID'].filter(k=>(stock[k]??0)<=0).length
   const qualityIssueOrders=data.orders.filter(r=>n(r,'LAST_REJECTED')>0).length
   const commonMetrics:Metric[]=[{label:'진행 중 작업지시',value:runningOrders,unit:'건',detail:'현장 가동 중'},{label:'시작 대기 작업지시',value:queuedOrders,unit:'건',detail:'발행 후 현장 시작 전'}]
+  const lineOrder=data.orders.find(o=>['RUNNING','PAUSED'].includes(s(o,'STATUS')))
   const pageMetrics:Record<Page,Metric[]>={
     home:[],
     planning:[...commonMetrics,{label:'지시 미발행 계획',value:unreleasedPlans,unit:'건',detail:'초안·승인 완료 포함'},{label:'발행 가능 계획',value:approvedPlans,unit:'건',detail:'시작 예정일 확인 필요'}],
@@ -106,7 +107,7 @@ export default function App(){
     trace:[...commonMetrics,{label:'누적 생산 LOT',value:data.productionLots.length,unit:'개',detail:'작업지시별 완제품 LOT'},{label:'누적 자재 LOT',value:data.lots.length,unit:'개',detail:`가용 ${usableMaterialLots}개`},{label:'완료 생산 LOT',value:data.productionLots.filter(r=>s(r,'STATUS')==='COMPLETE').length,unit:'개',detail:'목표 양품 출고 완료'},{label:'출고 LOT',value:data.shipments.length,unit:'개',detail:'고객사 목적지 연결'}],
     quality:[...commonMetrics,{label:'누적 양품',value:goodTotal,unit:'개',detail:'포장 완료 기준'},{label:'누적 불량',value:rejectTotal,unit:'개',detail:'불량 분류 기준'},{label:'실적 양품률',value:`${yieldRate}%`,detail:'포장 양품 ÷ 포장 양품·불량'},{label:'불량 발생 작업',value:qualityIssueOrders,unit:'건',detail:'불량 1개 이상'}],
     shipping:[...commonMetrics,{label:'누적 양품',value:goodTotal,unit:'개',detail:'전체 생산 LOT'},{label:'누적 불량',value:rejectTotal,unit:'개',detail:'전체 생산 LOT'},{label:'누적 출고',value:shippedTotal,unit:'개',detail:'출고 기록 합계'},{label:'출고 LOT',value:data.shipments.length,unit:'건',detail:'목적지별 이력'},{label:'포장 후 출고 대기',value:stock.FINISHED??0,unit:'개',detail:'완제품 재고'},{label:'차량 디지털 적재',value:stock.TRUCK??0,unit:'개',detail:'실물 적재 미구현'}],
-    process:[...commonMetrics,{label:'현재 작업 투입',value:data.plc.launched,unit:'세트',detail:'현장 누적값'},{label:'현재 작업 포장',value:data.plc.packed,unit:'개',detail:'현장 누적값'}],
+    process:[...commonMetrics,{label:'현재 작업 투입',value:lineOrder?Number(s(lineOrder,'LAST_LAUNCHED'))||0:0,unit:'세트',detail:lineOrder?`${s(lineOrder,'ORDER_CODE')} 실적`:'진행 중인 작업 없음'},{label:'현재 작업 포장',value:lineOrder?Number(s(lineOrder,'LAST_PACKED'))||0:0,unit:'개',detail:lineOrder?`${s(lineOrder,'ORDER_CODE')} 실적`:'진행 중인 작업 없음'}],
     equipment:[...commonMetrics,{label:'현장 제어기 연결',value:data.plc.connected?'연결됨':'끊김',detail:'OPC UA 현재 상태'},{label:'일시 정지 작업',value:pausedOrders,unit:'건',detail:'정비 정지와 별도'},{label:'설비 고장 이력',value:'미수집',detail:'고장·정비 센서 이력 구축 예정'},{label:'예지보전 데이터',value:'미수집',detail:'온도·진동·전류 센서 예정'}],
     events:[...commonMetrics,{label:'화면 표시 이벤트',value:data.events.length,unit:'건',detail:'최근 최대 50건'},{label:'제어기 연결',value:data.plc.connected?'정상':'끊김',detail:'현재 수신 상태'}]
   }

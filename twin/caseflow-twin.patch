@@ -13,10 +13,10 @@ index 040f563..cc418b5 100644
            view: v,
 diff --git a/src/editor/caseflow/bridge.ts b/src/editor/caseflow/bridge.ts
 new file mode 100644
-index 0000000..af7a101
+index 0000000..9de06ea
 --- /dev/null
 +++ b/src/editor/caseflow/bridge.ts
-@@ -0,0 +1,204 @@
+@@ -0,0 +1,226 @@
 +// CaseFlow twin bridge (this fork's only addition to the simulator).
 +//
 +// With ?scene=caseflow the editor boots straight into the CaseFlow case-assembly line (public/caseflow/caseflow.oip),
@@ -79,6 +79,7 @@ index 0000000..af7a101
 +  const tags = (): Record<string, unknown> => ({ ...(sim.plcState?.watch ?? {}) })
 +  const lineRunning = (): boolean => tags().M0 === true
 +  let busy = false
++  const mirrored = new Set<string>()
 +
 +  /** Replace the robot's params as one authoring edit (an undo step, and the run picks it up live). */
 +  const setRobotParams = (patch: Record<string, unknown>, label: string): void => {
@@ -166,6 +167,27 @@ index 0000000..af7a101
 +    },
 +    /** BOOL/INT write of a program input (MesPermit, HmiStart, ...), as an operator panel would */
 +    write: (key: string, value: boolean | number): string | null => ctrl()?.writePlcValue(key, String(value).toUpperCase()) ?? 'not ready',
++    /**
++     * Follow another copy of the line (OIP Desktop on the field PC): force this PLC's outputs to its values, so the
++     * conveyors, feeders, stoppers, cells and robot here move as they do there. {@code null} hands the outputs back
++     * to this PLC's own program. While the pendant drives the robot, its two robot outputs are left to the pendant.
++     */
++    mirror: (values: Record<string, boolean | number> | null): void => {
++      const c = ctrl()
++      if (!c) return
++      if (!values) {
++        for (const k of mirrored) c.releasePlcForces(k)
++        mirrored.clear()
++        return
++      }
++      const now = tags()
++      for (const [k, v] of Object.entries(values)) {
++        if (busy && (k === 'RobotStart' || k === 'RobotCommand')) continue
++        if (now[k] === v && mirrored.has(k)) continue
++        c.forcePlcValue(k, typeof v === 'boolean' ? (v ? 'TRUE' : 'FALSE') : String(Math.round(v)))
++        mirrored.add(k)
++      }
++    },
 +    /** a momentary press of an HMI button tag */
 +    press: async (key: 'HmiStart' | 'HmiStop'): Promise<void> => {
 +      ctrl()?.writePlcValue(key, 'TRUE')

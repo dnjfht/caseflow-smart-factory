@@ -5,7 +5,7 @@
 //
 // Every half second it reads OIP Desktop's PLC tags through OIP's local agent door (http://127.0.0.1:5189/mcp,
 // Settings > Agent connections), posts them to the MES (/api/twin/field-sync), and applies what comes back:
-// the MES's writes (run permit, target, material permit and stock), start/stop presses made on the web twin,
+// the MES's writes (run permit, target, material permit and stock), start/stop pressed on the MES operator panel,
 // a line reset for a new work order, and the robot program taught on the MES's teach pendant.
 // It keeps OIP's simulation playing. No dependencies: Node 18 or newer.
 
@@ -16,7 +16,11 @@ const ROBOT = 'AssemblyRobot'
 const TAGS = ['M0', 'RunLatch', 'MesPermit', 'MesMaterialPermit', 'WorkOrderActive', 'TargetQuantity', 'MachineState', 'FaultCode',
   'LaunchedCount', 'RejectCount', 'ProducedCount', 'ShippedCount', 'AssemblyPhase', 'InspectionPhase', 'PackingPhase',
   'BodyConveyorRun', 'BodyStopper', 'LidStopper', 'RejectDiverter', 'RobotReady', 'PermitLamp', 'RunLamp', 'AlarmLamp',
-  'BodyStockDisplay', 'LidStockDisplay']
+  'BodyStockDisplay', 'LidStockDisplay',
+  // PLC outputs: the web twin mirrors these, so its conveyors, feeders, stoppers and robot move as OIP Desktop's do
+  'LidConveyorRun', 'BodyFeedEnable', 'LidFeedEnable', 'RobotStart', 'AssemblyOutRun', 'InspectionConveyorRun',
+  'PackingConveyorRun', 'PackStart', 'FinishedGoodsConveyorRun', 'ShippingConveyorRun', 'InspectionStart',
+  'RobotReleasedSignal', 'RobotCommand', 'TruckLoadVisual', 'TruckTargetVisual', 'BodyStockVisual', 'LidStockVisual']
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const stamp = () => new Date().toLocaleTimeString('ko-KR')
@@ -92,7 +96,7 @@ async function tick() {
     }
   }
   for (const key of reply.pulses ?? []) {
-    log(key === 'HmiStart' ? '웹 트윈에서 시작 → OIP 시작 버튼' : '웹 트윈에서 정지 → OIP 정지 버튼')
+    log(key === 'HmiStart' ? 'MES 조작반에서 시작 → OIP 시작 버튼' : 'MES 조작반에서 정지 → OIP 정지 버튼')
     await pulse(key)
   }
   if (lastProgram === null) lastProgram = reply.programSeq

@@ -33,7 +33,9 @@ class MesReconciliationTest {
         assertThat(quantity("TRUCK")).isZero();
         assertThat(quantity("DISPATCHED")).isEqualTo(3);
         assertThat(db.queryForObject("SELECT status FROM mes_order WHERE order_code='TEST-3'",String.class)).isEqualTo("COMPLETE");
-        assertThat(db.queryForObject("SELECT COUNT(*) FROM mes_event",Integer.class)).isEqualTo(14);
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM mes_event",Integer.class)).isEqualTo(15);
+        // reaching the target withdraws the run permit by itself, once
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM mes_event WHERE event_type='PERMIT_WITHDRAWN_ON_COMPLETE'",Integer.class)).isEqualTo(1);
         assertThat(db.queryForObject("SELECT COUNT(*) FROM material_issue",Integer.class)).isEqualTo(10);
         assertThat(db.queryForObject("SELECT available_qty FROM material_lot WHERE sku='BODY'",Integer.class)).isEqualTo(15);
         assertThat(db.queryForObject("SELECT quantity FROM shipment WHERE order_id=1",Integer.class)).isEqualTo(3);
