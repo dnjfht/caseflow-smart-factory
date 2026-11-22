@@ -65,14 +65,14 @@ public class TwinGateway implements PlcGateway {
         if (!lease) return new SyncReply(false, Map.of(), List.of(), resetSeq.get(), programSeq.get(), field.fresh(now), lineTags(now));
         holderSeen = now;
         accept(twin, field, reported, now);
-        return new SyncReply(true, new LinkedHashMap<>(desired), drain(twin), resetSeq.get(), programSeq.get(), field.fresh(now), Map.of());
+        return new SyncReply(true, writesFor(twin), drain(twin), resetSeq.get(), programSeq.get(), field.fresh(now), Map.of());
     }
 
     /** the shop-floor PC's agent reports OIP Desktop's tags */
     public synchronized SyncReply syncField(Map<String, Object> reported) {
         Instant now = Instant.now();
         accept(field, twin, reported, now);
-        return new SyncReply(true, new LinkedHashMap<>(desired), drain(field), resetSeq.get(), programSeq.get(), true, Map.of());
+        return new SyncReply(true, writesFor(field), drain(field), resetSeq.get(), programSeq.get(), true, Map.of());
     }
 
     private void accept(Side self, Side other, Map<String, Object> reported, Instant now) {
@@ -90,6 +90,20 @@ public class TwinGateway implements PlcGateway {
             }
             self.runLatch = on;
         }
+    }
+
+    /**
+     * The MES writes for one copy. Its target is what it has shipped itself plus what the order still needs, so both
+     * copies stop when the order is done, not when each has made the whole order on its own; a copy that takes over
+     * mid-order then has exactly the rest to make.
+     */
+    private Map<String, Object> writesFor(Side side) {
+        Map<String, Object> w = new LinkedHashMap<>(desired);
+        if (desired.get("TargetQuantity") instanceof Number t && recordSide != null) {
+            int remaining = Math.max(0, t.intValue() - lastCount[3]);
+            w.put("TargetQuantity", num(side.tags, "ShippedCount") + remaining);
+        }
+        return w;
     }
 
     private List<String> drain(Side side) {
@@ -117,7 +131,12 @@ public class TwinGateway implements PlcGateway {
         if (line != recordSide) {
             // the other copy took over (field PC connected or dropped): carry on from the counts already reported,
             // so the switch reads as neither lost nor repeated production
-            if (recordSide != null) for (int i = 0; i < c.length; i++) offset[i] = lastCount[i] - num(t, COUNTERS[i]);
+            if (recordSide != null) {
+                for (int i = 0; i < c.length; i++) offset[i] = lastCount[i] - num(t, COUNTERS[i]);
+                // the line was running on the copy that dropped out: the copy taking over carries on
+                if (Boolean.TRUE.equals(recordSide.runLatch) && !Boolean.TRUE.equals(line.runLatch)
+                    && Boolean.TRUE.equals(desired.get("MesPermit"))) line.pulses.add("HmiStart");
+            }
             recordSide = line;
         }
         for (int i = 0; i < c.length; i++) { c[i] = Math.max(0, num(t, COUNTERS[i]) + offset[i]); lastCount[i] = c[i]; }

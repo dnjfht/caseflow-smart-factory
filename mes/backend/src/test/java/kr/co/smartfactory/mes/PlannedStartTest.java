@@ -24,11 +24,11 @@ class PlannedStartTest {
 
   ((TwinGateway)plc).syncTwin("browser",Map.of("LaunchedCount",0,"RejectCount",0,"ProducedCount",0,"ShippedCount",0,"RunLatch",false));
   ZoneId seoul=ZoneId.of("Asia/Seoul");
-  mes.clock=Clock.fixed(LocalDateTime.of(2026,11,22,9,30).atZone(seoul).toInstant(),seoul);
+  mes.useClock(Clock.fixed(LocalDateTime.of(2026,11,22,9,30).atZone(seoul).toInstant(),seoul));
   try {
    assertThatThrownBy(()->mes.command(order,"start")).hasMessageContaining("2026-11-22 14:00");
    assertThat(db.queryForObject("SELECT status FROM mes_order WHERE id=?",String.class,order)).isEqualTo("CREATED");
-  } finally { mes.clock=Clock.system(seoul); }
+  } finally { mes.useClock(Clock.system(seoul)); }
  }
  @Test void interruptedOrderClosesWithWhatItMade(){
   db.update("INSERT INTO mes_order(order_code,target_qty,status,last_exit,loaded_qty) VALUES ('WO-CLOSE-1',3,'PAUSED',2,2)");

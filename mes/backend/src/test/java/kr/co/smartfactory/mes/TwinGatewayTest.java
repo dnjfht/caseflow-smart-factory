@@ -37,4 +37,31 @@ class TwinGatewayTest {
   g.syncTwin("browser",Map.of("RunLatch",false,"TargetQuantity",3,"ShippedCount",0)); // a stop button
   assertThat(g.syncField(Map.of("RunLatch",true,"TargetQuantity",3,"ShippedCount",0)).pulses()).containsExactly("HmiStop");
  }
+ static Map<String,Object> run(boolean latch,int shipped){
+  return Map.of("RunLatch",latch,"ShippedCount",shipped,"LaunchedCount",shipped,"ProducedCount",shipped,"RejectCount",0,"MesPermit",true);
+ }
+ @Test void eachCopyAimsAtWhatTheOrderStillNeeds(){
+  TwinGateway g=new TwinGateway(); g.target(3); g.stop(false);
+  g.syncField(run(true,0)); g.syncTwin("b",run(true,0)); g.sample();
+  // the twin runs ahead: it is not the line of record, so it keeps going until the order (counted on the field PC) is done
+  g.syncField(run(true,1)); g.sample();
+  assertThat(g.syncTwin("b",run(true,3)).writes().get("TargetQuantity")).isEqualTo(5);
+  g.syncField(run(true,3)); g.sample();
+  assertThat(g.syncTwin("b",run(true,3)).writes().get("TargetQuantity")).isEqualTo(3);
+  assertThat(g.syncField(run(true,3)).writes().get("TargetQuantity")).isEqualTo(3);
+ }
+ @Test void theTwinFinishesTheOrderWhenTheFieldPcDropsOut() throws Exception {
+  TwinGateway g=new TwinGateway(); g.target(3); g.stop(false);
+  g.syncField(run(true,1)); g.syncTwin("b",run(false,3)); g.sample(); // the twin had stopped at its own count
+  var f=TwinGateway.class.getDeclaredField("field"); f.setAccessible(true);
+  var side=f.get(g); var seen=side.getClass().getDeclaredField("seen"); seen.setAccessible(true);
+  seen.set(side, java.time.Instant.EPOCH); // field PC gone
+  g.syncTwin("b",run(false,3));
+  assertThat(g.sample().lineExit()).isEqualTo(1);
+  var reply=g.syncTwin("b",run(false,3));
+  assertThat(reply.pulses()).containsExactly("HmiStart");
+  assertThat(reply.writes().get("TargetQuantity")).isEqualTo(5); // two more on the twin's own counter
+  g.syncTwin("b",run(true,5));
+  assertThat(g.sample().lineExit()).isEqualTo(3);
+ }
 }

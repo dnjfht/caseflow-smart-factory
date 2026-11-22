@@ -272,7 +272,9 @@ public class MesService {
     }
 
     /** the factory's wall clock: plan dates and times are entered in local (Korean) time, the server runs in UTC */
-    java.time.Clock clock = java.time.Clock.system(java.time.ZoneId.of("Asia/Seoul"));
+    private java.time.Clock clock = java.time.Clock.system(java.time.ZoneId.of("Asia/Seoul"));
+    /** for tests: a method, so the call reaches the service behind Spring's transactional proxy */
+    public void useClock(java.time.Clock c) { clock = c; }
 
     /** when the order's production plan is scheduled to start (a date without a time means that day's start), or null */
     java.time.LocalDateTime plannedStart(long orderId) {
