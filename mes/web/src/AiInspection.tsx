@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { apiUrl } from './apiBase'
 
 export const CAUSE_KO: Record<string, string> = {
   OK: '정상', LID_MISSING: '뚜껑 누락', LID_MISALIGNED: '뚜껑 어긋남', SCRATCH: '스크래치', CRACK: '크랙',
@@ -52,7 +53,7 @@ export default function AiInspection() {
         const truth = String(v(r, 'true_label')), cause = String(v(r, 'cause')), good = Boolean(v(r, 'verdict_good'))
         const right = good ? truth === 'OK' : truth === cause
         return <figure key={String(v(r, 'id'))} className={right ? '' : 'miss'}>
-          <img src={`/api/ai/image/${String(v(r, 'image'))}`} alt={ko(truth)} loading="lazy" />
+          <img src={apiUrl(`/api/ai/image/${String(v(r, 'image'))}`)} alt={ko(truth)} loading="lazy" />
           <figcaption><strong className={good ? 'ok' : 'ng'}>{good ? '양품' : `불량 · ${ko(cause)}`}</strong>
             <span>#{String(v(r, 'seq'))} · 신뢰도 {pct(Number(v(r, 'confidence')), 0)}</span>
             <span>실제: {ko(truth)}{right ? '' : ' ✗'}</span></figcaption>

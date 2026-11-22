@@ -8,4 +8,5 @@ if (base) {
     return originalFetch(input, init)
   }) as typeof fetch
 }
-export {}
+/** an /api/... URL for places fetch does not cover (img src, links) */
+export const apiUrl = (path: string) => (base ? base + path : path)
