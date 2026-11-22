@@ -82,7 +82,9 @@ public class TwinGateway implements PlcGateway {
         Object latch = reported.get("RunLatch");
         if (latch instanceof Boolean on) {
             // an edge on this copy is a button press on the other copy; the first report sets the baseline
-            if (self.runLatch != null && !self.runLatch.equals(on) && other.fresh(now)) {
+            // a copy that stops because it reached its target has finished, not been stopped: the other copy finishes its own
+            boolean finished = !on && num(reported, "TargetQuantity") > 0 && num(reported, "ShippedCount") >= num(reported, "TargetQuantity");
+            if (self.runLatch != null && !self.runLatch.equals(on) && other.fresh(now) && !finished) {
                 Object otherLatch = other.tags.get("RunLatch");
                 if (!on.equals(otherLatch)) other.pulses.add(on ? "HmiStart" : "HmiStop");
             }

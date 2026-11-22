@@ -27,4 +27,14 @@ class TwinGatewayTest {
   g.syncTwin("browser",tags(0,0));
   assertThat(g.sample().launched()).isZero();
  }
+ @Test void finishingOnOneCopyDoesNotStopTheOther(){
+  TwinGateway g=new TwinGateway();
+  g.syncField(Map.of("RunLatch",true,"TargetQuantity",1,"ShippedCount",0));
+  g.syncTwin("browser",Map.of("RunLatch",true,"TargetQuantity",1,"ShippedCount",0));
+  var r=g.syncTwin("browser",Map.of("RunLatch",false,"TargetQuantity",1,"ShippedCount",1)); // the twin finished first
+  assertThat(g.syncField(Map.of("RunLatch",true,"TargetQuantity",1,"ShippedCount",0)).pulses()).isEmpty();
+  g.syncTwin("browser",Map.of("RunLatch",true,"TargetQuantity",3,"ShippedCount",0));
+  g.syncTwin("browser",Map.of("RunLatch",false,"TargetQuantity",3,"ShippedCount",0)); // a stop button
+  assertThat(g.syncField(Map.of("RunLatch",true,"TargetQuantity",3,"ShippedCount",0)).pulses()).containsExactly("HmiStop");
+ }
 }

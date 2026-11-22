@@ -244,6 +244,26 @@ public class MesService {
                     event(id,"PLC_COUNTER_RECOVERED",remaining);
                     plc.stop(false);
                 }
+                case "close" -> {
+                    // end an interrupted order with what it actually made: the loaded good products leave as a short shipment
+                    if (!state.equals("PAUSED") && !state.equals("NEEDS_RESET"))
+                        throw new ResponseStatusException(HttpStatus.CONFLICT, "정지(PAUSED)·NEEDS_RESET 작업만 현재 실적으로 마감할 수 있습니다.");
+                    plc.stop(true);
+                    int loaded = ((Number)order.get("LOADED_QTY")).intValue();
+                    String orderCode = (String)order.get("ORDER_CODE");
+                    if (loaded > 0) {
+                        stock("TRUCK",-loaded); stock("DISPATCHED",loaded);
+                        List<Map<String,Object>> planRows = db.queryForList("SELECT p.destination FROM production_plan p " +
+                            "JOIN plan_order po ON po.plan_id=p.id WHERE po.order_id=?",id);
+                        String destination = planRows.isEmpty() ? "미지정(직접 작업지시)" : (String)planRows.getFirst().get("DESTINATION");
+                        db.update("INSERT INTO shipment(shipment_code,order_id,finished_lot_code,destination,quantity) VALUES (?,?,?,?,?)",
+                            "SHIP-"+orderCode,id,"FG-"+orderCode,destination,loaded);
+                    }
+                    db.update("UPDATE mes_order SET status='COMPLETE',loaded_qty=0,dispatched_qty=? WHERE id=?",loaded,id);
+                    db.update("UPDATE production_lot SET status='COMPLETE' WHERE order_id=?",id);
+                    db.update("UPDATE production_plan SET status='COMPLETE' WHERE id IN (SELECT plan_id FROM plan_order WHERE order_id=?)",id);
+                    event(id,"ORDER_CLOSED_WITH_ACTUAL",loaded);
+                }
                 default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 명령입니다.");
             }
         } catch (ResponseStatusException e) { throw e; }

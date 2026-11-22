@@ -30,4 +30,12 @@ class PlannedStartTest {
    assertThat(db.queryForObject("SELECT status FROM mes_order WHERE id=?",String.class,order)).isEqualTo("CREATED");
   } finally { mes.clock=Clock.system(seoul); }
  }
+ @Test void interruptedOrderClosesWithWhatItMade(){
+  db.update("INSERT INTO mes_order(order_code,target_qty,status,last_exit,loaded_qty) VALUES ('WO-CLOSE-1',3,'PAUSED',2,2)");
+  long order=db.queryForObject("SELECT id FROM mes_order WHERE order_code='WO-CLOSE-1'",Long.class);
+  ((TwinGateway)plc).syncTwin("browser",Map.of("LaunchedCount",0,"RejectCount",0,"ProducedCount",0,"ShippedCount",0,"RunLatch",false));
+  mes.command(order,"close");
+  assertThat(db.queryForObject("SELECT status FROM mes_order WHERE id=?",String.class,order)).isEqualTo("COMPLETE");
+  assertThat(db.queryForObject("SELECT quantity FROM shipment WHERE order_id=?",Integer.class,order)).isEqualTo(2);
+ }
 }
