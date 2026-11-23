@@ -32,13 +32,57 @@ public class AiController {
         return m;
     }
 
+    /** the inspection log, one page at a time, for one work order or all; verdict GOOD / NG narrows it */
     @GetMapping("/inspections")
-    public List<Map<String, Object>> inspections(@RequestParam(defaultValue = "40") int limit,
-                                                 @RequestParam(required = false) Long orderId) {
-        int n = Math.max(1, Math.min(300, limit));
-        return orderId == null
-            ? db.queryForList("SELECT * FROM ai_inspection ORDER BY id DESC LIMIT ?", n)
-            : db.queryForList("SELECT * FROM ai_inspection WHERE order_id = ? ORDER BY id DESC LIMIT ?", orderId, n);
+    public Map<String, Object> inspections(@RequestParam(defaultValue = "10") int limit,
+                                           @RequestParam(defaultValue = "0") int offset,
+                                           @RequestParam(required = false) Long orderId,
+                                           @RequestParam(required = false) String verdict) {
+        int n = Math.max(1, Math.min(100, limit)), from = Math.max(0, offset);
+        List<Object> args = new java.util.ArrayList<>();
+        StringBuilder where = new StringBuilder(" WHERE 1=1");
+        if (orderId != null) { where.append(" AND a.order_id = ?"); args.add(orderId); }
+        if ("GOOD".equals(verdict)) where.append(" AND a.verdict_good = TRUE");
+        if ("NG".equals(verdict)) where.append(" AND a.verdict_good = FALSE");
+        Integer total = db.queryForObject("SELECT COUNT(*) FROM ai_inspection a" + where, Integer.class, args.toArray());
+        List<Object> page = new java.util.ArrayList<>(args);
+        page.add(n);
+        page.add(from);
+        List<Map<String, Object>> rows = db.queryForList("SELECT a.id, a.inspected_at, a.order_id, o.order_code, a.seq, a.image, " +
+            "a.true_label, a.pred_label, a.cause, a.verdict_good, a.p_defect, a.confidence, a.probs, a.threshold, a.model_version, a.latency_ms " +
+            "FROM ai_inspection a LEFT JOIN mes_order o ON o.id = a.order_id" + where + " ORDER BY a.id DESC LIMIT ? OFFSET ?", page.toArray());
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("total", total == null ? 0 : total);
+        m.put("rows", rows);
+        return m;
+    }
+
+    /** per work order: how many cases were judged, how many rejected, and for what cause - newest orders first */
+    @GetMapping("/by-order")
+    public List<Map<String, Object>> byOrder(@RequestParam(defaultValue = "8") int limit) {
+        List<Map<String, Object>> orders = db.queryForList("SELECT a.order_id, o.order_code, COUNT(*) AS total, " +
+            "SUM(CASE WHEN a.verdict_good THEN 0 ELSE 1 END) AS defects, MAX(a.id) AS last_id FROM ai_inspection a " +
+            "JOIN mes_order o ON o.id = a.order_id GROUP BY a.order_id, o.order_code ORDER BY MAX(a.id) DESC LIMIT ?",
+            Math.max(1, Math.min(50, limit)));
+        List<Map<String, Object>> out = new java.util.ArrayList<>();
+        for (Map<String, Object> o : orders) {
+            Object id = o.get("order_id") != null ? o.get("order_id") : o.get("ORDER_ID");
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("orderId", id);
+            m.put("orderCode", o.get("order_code") != null ? o.get("order_code") : o.get("ORDER_CODE"));
+            m.put("total", ((Number) (o.get("total") != null ? o.get("total") : o.get("TOTAL"))).intValue());
+            m.put("defects", ((Number) (o.get("defects") != null ? o.get("defects") : o.get("DEFECTS"))).intValue());
+            m.put("byCause", causes(" WHERE verdict_good = FALSE AND order_id = ?", id));
+            out.add(m);
+        }
+        return out;
+    }
+
+    private Map<String, Integer> causes(String where, Object... args) {
+        Map<String, Integer> m = new LinkedHashMap<>();
+        for (Map<String, Object> r : db.queryForList("SELECT cause, COUNT(*) AS n FROM ai_inspection" + where + " GROUP BY cause ORDER BY COUNT(*) DESC", args))
+            m.put(String.valueOf(r.get("cause") != null ? r.get("cause") : r.get("CAUSE")), ((Number) (r.get("n") != null ? r.get("n") : r.get("N"))).intValue());
+        return m;
     }
 
     /** the camera image of one judged case */
@@ -80,6 +124,8 @@ public class AiController {
         m.put("unsure", unsure);
         m.put("avgLatencyMs", total == 0 ? null : (double) latency / total);
         m.put("confusion", confusion);
+        m.put("rejected", rows.stream().filter(r -> !Boolean.TRUE.equals(r.get("verdict_good"))).count());
+        m.put("byCause", orderId == null ? causes(" WHERE verdict_good = FALSE") : causes(" WHERE verdict_good = FALSE AND order_id = ?", orderId));
         return m;
     }
 }

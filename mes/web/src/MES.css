@@ -175,19 +175,42 @@
 .metric,.card{border-color:#dde8f5;box-shadow:0 4px 14px #3f6fa20d}
 
 /* vision AI inspection */
-.ai-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:14px 0}
+.ai-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:6px 0 2px}
 .ai-kpis>div{background:#f3f8fc;border:1px solid #dbe8f3;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
 .ai-kpis b{font-size:22px;color:#14212e}
+.ai-kpis b small{font-size:13px;color:#5b6b7c;font-weight:600}
 .ai-kpis span{font-size:12px;color:#5b6b7c}
 .ai-kpis .bad b{color:#c0533b}
-.ai-model{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:14px}
-.ai-model>div{border-left:3px solid #5aa9e6;padding:4px 12px}
-.ai-model p{margin:4px 0 0;font-size:13px;color:#33475b}
-.ai-shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-.ai-shots figure{margin:0;border:1px solid #dbe8f3;border-radius:12px;overflow:hidden;background:#fff}
-.ai-shots figure.miss{border:2px solid #d8755d}
-.ai-shots img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
-.ai-shots figcaption{padding:8px 10px;display:flex;flex-direction:column;gap:2px;font-size:12px;color:#5b6b7c}
-.ai-shots strong{font-size:13px}
-.ai-shots strong.ok{color:#2f7d4f}
-.ai-shots strong.ng{color:#c0533b}
+.ai-charts{margin-top:0}
+.ai-pie{display:flex;align-items:center;gap:22px;flex-wrap:wrap;padding:6px 0}
+.ai-pie svg{width:180px;height:180px;flex:none}
+.ai-pie-n{font:700 26px sans-serif;fill:#14212e}.ai-pie-l{font:11px sans-serif;fill:#6a7888}
+.ai-pie ul{list-style:none;margin:0;padding:0;display:grid;gap:7px;min-width:200px;flex:1}
+.ai-pie li{display:grid;grid-template-columns:12px 1fr auto 44px;align-items:center;gap:8px;font-size:13px;color:#33475b}
+.ai-pie li i,.ai-legend i,.ai-log .dot{width:10px;height:10px;border-radius:2px;display:inline-block}
+.ai-pie li b{color:#14212e}.ai-pie li span{color:#7a8796;font-size:12px;text-align:right}
+.ai-legend{flex-wrap:wrap;gap:10px!important}.ai-legend span{display:inline-flex;align-items:center;gap:4px}
+.ai-log{width:100%;border-collapse:collapse;font-size:13px}
+.ai-log th{text-align:left;font-size:11px;color:#6a7888;font-weight:700;padding:9px 10px;border-bottom:1px solid #dbe8f3;background:#f6f9fc}
+.ai-log td{padding:9px 10px;border-bottom:1px solid #edf2f7;color:#26323f}
+.ai-log tbody tr{cursor:pointer}.ai-log tbody tr:hover{background:#f1f7fd}
+.ai-log .dot{margin-right:6px;vertical-align:-1px}
+.ai-log em,.ai-verdict em{font-style:normal;font-weight:700;padding:3px 9px;border-radius:10px;font-size:12px}
+em.ok{background:#e4f3ea;color:#2f7d4f}em.ng{background:#fbe8e3;color:#c0533b}
+.ai-model{margin-top:14px;border-top:1px solid #e3ebf3;padding-top:10px}
+.ai-model summary{cursor:pointer;font-size:13px;font-weight:700;color:#255a8e}
+.ai-model-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-top:10px}
+.ai-model-grid>div{border-left:3px solid #5aa9e6;padding:4px 12px}
+.ai-model-grid p{margin:4px 0 0;font-size:13px;color:#33475b}
+.ai-modal{position:fixed;inset:0;background:rgba(14,22,32,.45);display:grid;place-items:center;z-index:50;padding:16px}
+.ai-modal>div{background:#fff;border-radius:16px;max-width:720px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden}
+.ai-modal header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #e3ebf3}
+.ai-modal header button{border:0;background:none;font-size:24px;cursor:pointer;color:#5b6b7c}
+.ai-modal-body{display:grid;grid-template-columns:260px 1fr;gap:18px;padding:16px}
+.ai-modal-body img{width:260px;height:260px;border-radius:10px;object-fit:cover}
+.ai-probs{list-style:none;padding:0;margin:10px 0;display:grid;gap:6px}
+.ai-probs li{display:grid;grid-template-columns:100px 1fr 54px;align-items:center;gap:8px;font-size:12px;color:#33475b}
+.ai-probs i{height:8px;background:#edf2f7;border-radius:4px;overflow:hidden;display:block}
+.ai-probs s{display:block;height:100%}
+.ai-probs b{text-align:right}
+@media(max-width:700px){.ai-modal-body{grid-template-columns:1fr}.ai-modal-body img{width:100%;height:auto}}
