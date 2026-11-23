@@ -20,18 +20,23 @@ public class OperationsController {
     public OperationsController(MesService mes, LotService lots) { this.mes=mes; this.lots=lots; }
 
     @GetMapping("/plans") public List<Map<String,Object>> plans() { return mes.plans(); }
-    @PostMapping("/plans") public Map<String,Object> createPlan(@RequestBody PlanRequest r) {
-        return mes.createPlan(r.code(),r.target(),r.plannedStart(),r.plannedStartTime(),r.dueDate(),r.destination(),r.createdBy());
+    // the signed-in person is the author / approver / receiver of record; a name typed into the form is not
+    @PostMapping("/plans") public Map<String,Object> createPlan(@RequestBody PlanRequest r, jakarta.servlet.http.HttpServletRequest req) {
+        return mes.createPlan(r.code(),r.target(),r.plannedStart(),r.plannedStartTime(),r.dueDate(),r.destination(),actor(req,r.createdBy()));
     }
-    @PostMapping("/plans/{id}/approve") public Map<String,Object> approve(@PathVariable long id,@RequestBody ApproveRequest r) {
-        return mes.approvePlan(id,r.approver());
+    @PostMapping("/plans/{id}/approve") public Map<String,Object> approve(@PathVariable long id,@RequestBody(required=false) ApproveRequest r, jakarta.servlet.http.HttpServletRequest req) {
+        return mes.approvePlan(id,actor(req,r==null?null:r.approver()));
+    }
+    private static String actor(jakarta.servlet.http.HttpServletRequest req, String typed) {
+        AuthService.User u = AuthController.current(req);
+        return u != null ? u.label() : typed;
     }
     @PostMapping("/plans/{id}/release") public Map<String,Object> release(@PathVariable long id) {
         return mes.releasePlan(id);
     }
     @GetMapping("/lots") public List<Map<String,Object>> lots() { return lots.lots(); }
-    @PostMapping("/lots") public Map<String,Object> receive(@RequestBody ReceiptRequest r) {
-        return lots.receive(r.lotCode(),r.sku(),r.quantity(),r.supplier(),r.origin(),r.receivedBy());
+    @PostMapping("/lots") public Map<String,Object> receive(@RequestBody ReceiptRequest r, jakarta.servlet.http.HttpServletRequest req) {
+        return lots.receive(r.lotCode(),r.sku(),r.quantity(),r.supplier(),r.origin(),actor(req,r.receivedBy()));
     }
     @GetMapping("/production-lots") public List<Map<String,Object>> productionLots() { return mes.productionLots(); }
     @GetMapping("/bom") public List<Map<String,Object>> bom() { return lots.bom(); }

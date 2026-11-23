@@ -169,6 +169,9 @@ public class MesService {
         if (rows.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"생산계획을 찾지 못했습니다.");
         if (!"DRAFT".equals(rows.getFirst().get("STATUS")))
             throw new ResponseStatusException(HttpStatus.CONFLICT,"작성 중인 계획만 승인할 수 있습니다.");
+        // maker-checker: the person who drafted a plan does not approve it
+        if (approver.equals(String.valueOf(rows.getFirst().get("CREATED_BY"))))
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"직접 작성한 계획은 승인할 수 없습니다. 다른 생산 관리자가 승인해야 합니다.");
         db.update("UPDATE production_plan SET status='APPROVED',approved_by=?,approved_at=CURRENT_TIMESTAMP WHERE id=?",
             approver,planId);
         return db.queryForMap("SELECT * FROM production_plan WHERE id=?",planId);

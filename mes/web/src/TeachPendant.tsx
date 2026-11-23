@@ -1,3 +1,4 @@
+import { can, currentSession, needText, useSession } from './auth'
 import { useEffect, useRef, useState } from 'react'
 import { TwinSlot } from './TwinHost'
 import { ROBOT_MODEL, isStaticSite, twin, useTwinLink, useTwinTags } from './twin'
@@ -22,6 +23,7 @@ export default function TeachPendant() {
   const running = tags.M0 === true || ((viewer || link.field) && link.serverTags.M0 === true)
   const [joints, setJoints] = useState<number[] | null>(null)
   const [inc, setInc] = useState(5)
+  const manager = can('SUPERVISOR', useSession())
   const [prog, setProg] = useState<Program | null>(null)
   const original = useRef<Program | null>(null)
   const [sel, setSel] = useState(0)
@@ -92,7 +94,7 @@ export default function TeachPendant() {
     if (err) return err
     setDirty(false)
     // kept in the MES database, so the next session (anyone's) starts from this program
-    if (!isStaticSite) void fetch('/api/twin/robot-program', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...prog, savedBy: 'MES 티치펜던트', model: ROBOT_MODEL }) })
+    if (!isStaticSite) void fetch('/api/twin/robot-program', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...prog, savedBy: currentSession()?.user.name ?? 'MES 티치펜던트', model: ROBOT_MODEL }) })
     return null
   })
   const testRun = () => act('조립 작업 1회 시험 실행을 마쳤습니다.', () => twin()?.robot.runJob(1) ?? '시뮬레이터 준비 중입니다.')
@@ -145,7 +147,7 @@ export default function TeachPendant() {
       </li>)}</ol>
       <div className="add-steps"><span>단계 추가</span>{[MOVE, VACUUM, WAIT, SET_OUT].map(op => <button key={op} disabled={locked} onClick={() => addStep(op)}>+ {OP_LABEL[op]}</button>)}</div>
       <div className="pendant-actions">
-        <button className="primary" disabled={locked || !dirty} onClick={apply}>공정에 적용</button>
+        <button className="primary" disabled={locked || !dirty || !manager} title={manager ? '' : needText('SUPERVISOR')} onClick={apply}>공정에 적용</button>
         <button disabled={locked || dirty} onClick={testRun} title={dirty ? '먼저 공정에 적용하세요' : ''}>작업 1회 시험 실행</button>
         <button disabled={locked} onClick={restore}>원래 프로그램 불러오기</button>
         {dirty && <em>적용하지 않은 변경이 있습니다</em>}
