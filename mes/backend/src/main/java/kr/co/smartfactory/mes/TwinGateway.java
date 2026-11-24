@@ -58,7 +58,7 @@ public class TwinGateway implements PlcGateway {
         "TargetQuantity", "MachineState", "FaultCode", "LaunchedCount", "RejectCount", "ProducedCount", "ShippedCount",
         "AssemblyPhase", "InspectionPhase", "PackingPhase", "BodyConveyorRun", "BodyStopper", "LidStopper", "RejectDiverter",
         "RobotReady", "PermitLamp", "RunLamp", "AlarmLamp", "BodyStockDisplay", "LidStockDisplay", "InspectedCount",
-        "LastVerdictGood", "AiRequest", "AiMode", "AiVerdictSeq", "AiVerdictGood");
+        "LastVerdictGood", "AiRequest", "AiMode", "AiVerdictSeq", "AiVerdictGood", "EquipmentFault");
 
     private final AiInspector ai;
 
@@ -266,6 +266,14 @@ public class TwinGateway implements PlcGateway {
         s.put("verdictsCompared", compared);
         s.put("verdictMismatches", mismatches);
         return s;
+    }
+
+    @Override
+    public synchronized void equipmentFault(int code) { desired.put("EquipmentFault", code); }
+
+    @Override
+    public synchronized void restartLine() {
+        if (Boolean.TRUE.equals(desired.get("MesPermit"))) (field.fresh(Instant.now()) ? field : twin).pulses.add("HmiStart");
     }
 
     /** a start or stop pressed on the MES operator panel acts on the line: OIP Desktop if connected, else the twin */

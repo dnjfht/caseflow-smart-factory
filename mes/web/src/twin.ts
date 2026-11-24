@@ -86,7 +86,7 @@ export function useTwinLink(): LinkState {
 const SYNC_TAGS = ['M0', 'RunLatch', 'MesPermit', 'MesMaterialPermit', 'WorkOrderActive', 'TargetQuantity', 'MachineState', 'FaultCode',
   'LaunchedCount', 'RejectCount', 'ProducedCount', 'ShippedCount', 'AssemblyPhase', 'InspectionPhase', 'PackingPhase',
   'BodyConveyorRun', 'BodyStopper', 'LidStopper', 'RejectDiverter', 'RobotReady', 'PermitLamp', 'RunLamp', 'AlarmLamp',
-  'BodyStockDisplay', 'LidStockDisplay', 'InspectedCount', 'LastVerdictGood', 'AiRequest', 'AiMode', 'AiVerdictSeq', 'AiVerdictGood']
+  'BodyStockDisplay', 'LidStockDisplay', 'InspectedCount', 'LastVerdictGood', 'AiRequest', 'AiMode', 'AiVerdictSeq', 'AiVerdictGood', 'EquipmentFault', 'AlarmLamp']
 const session = Math.random().toString(36).slice(2)
 let lastReset: number | null = null
 let lastProgram: number | null = null

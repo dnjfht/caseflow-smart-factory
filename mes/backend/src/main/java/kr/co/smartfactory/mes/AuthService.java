@@ -18,19 +18,29 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 /**
- * Who is using the MES, and what their role lets them do. Roles stack (each includes the ones below it):
+ * Who is using the MES, and what their role lets them do. Roles:
  * OPERATOR (생산 작업자) runs the line and drafts plans; SUPERVISOR (생산 관리자) approves plans, issues and permits
- * work orders; ADMIN (시스템 관리자) also manages accounts. Anyone may look without signing in.
+ * work orders; MAINTENANCE (설비 관리자) locks, repairs and confirms equipment; ADMIN (시스템 관리자) may do all of it and
+ * manages accounts. Anyone may look without signing in.
  * <p>
  * Passwords are kept as PBKDF2-SHA256 hashes; a sign-in returns a token signed with a key kept in the database, so
  * sign-ins survive a server restart (the free server sleeps and wakes often).
  */
 @Service
 public class AuthService {
-    public enum Role { OPERATOR, SUPERVISOR, ADMIN }
+    public enum Role { OPERATOR, SUPERVISOR, MAINTENANCE, ADMIN }
+    /** who may make a change: production work (작업자 이상), production management (관리자), equipment care (설비 관리자) */
+    public enum Need {
+        PRODUCTION(Role.OPERATOR, Role.SUPERVISOR, Role.ADMIN),
+        MANAGEMENT(Role.SUPERVISOR, Role.ADMIN),
+        MAINTENANCE(Role.MAINTENANCE, Role.ADMIN),
+        ADMIN(Role.ADMIN);
+        final java.util.Set<Role> roles;
+        Need(Role... r) { roles = java.util.EnumSet.copyOf(java.util.List.of(r)); }
+    }
     public record User(String username, String name, Role role) {
         public String label() { return name + " (" + username + ")"; }
-        public boolean atLeast(Role r) { return role.ordinal() >= r.ordinal(); }
+        public boolean may(Need n) { return n.roles.contains(role); }
     }
 
     static final long TTL_SECONDS = 12 * 3600;
@@ -42,7 +52,8 @@ public class AuthService {
     public AuthService(JdbcTemplate db,
                        @Value("${mes.demo.password.operator:operator1234}") String operatorPw,
                        @Value("${mes.demo.password.supervisor:supervisor1234}") String supervisorPw,
-                       @Value("${mes.demo.password.admin:admin1234}") String adminPw) {
+                       @Value("${mes.demo.password.admin:admin1234}") String adminPw,
+                       @Value("${mes.demo.password.maintenance:maint1234}") String maintPw) {
         this.db = db;
         List<String> k = db.queryForList("SELECT setting_value FROM app_setting WHERE setting_key='auth.key'", String.class);
         if (k.isEmpty()) {
@@ -51,12 +62,16 @@ public class AuthService {
             db.update("INSERT INTO app_setting(setting_key,setting_value) VALUES ('auth.key',?)", HexFormat.of().formatHex(fresh));
             key = fresh;
         } else key = HexFormat.of().parseHex(k.get(0));
-        Integer users = db.queryForObject("SELECT COUNT(*) FROM mes_user", Integer.class);
-        if (users == null || users == 0) {
-            create("operator1", "김현장", Role.OPERATOR, operatorPw);
-            create("supervisor1", "이반장", Role.SUPERVISOR, supervisorPw);
-            create("admin", "시스템관리자", Role.ADMIN, adminPw);
-        }
+        // demo accounts, each made once (a later version adds its new account without touching the others)
+        seed("operator1", "김현장", Role.OPERATOR, operatorPw);
+        seed("supervisor1", "이반장", Role.SUPERVISOR, supervisorPw);
+        seed("maint1", "박정비", Role.MAINTENANCE, maintPw);
+        seed("admin", "시스템관리자", Role.ADMIN, adminPw);
+    }
+
+    private void seed(String username, String name, Role role, String password) {
+        Integer n = db.queryForObject("SELECT COUNT(*) FROM mes_user WHERE username=?", Integer.class, username);
+        if (n == null || n == 0) create(username, name, role, password);
     }
 
     void create(String username, String name, Role role, String password) {

@@ -26,5 +26,12 @@ public interface PlcGateway {
      * A PLC that keeps its own state (OPC UA) needs nothing.
      */
     default void resumeRun(boolean permitted, int target, int launched, int rejected, int packed, int exit) { }
+    /**
+     * An equipment fault stops the line: the PLC's FaultCode (non-zero) drops its run latch, blocks the start buttons and
+     * lights the alarm lamp, on OIP Desktop and the web twin alike. 0 clears it.
+     */
+    default void equipmentFault(int code) { }
+    /** after a repair is confirmed: start the line again, as the field start button would (needs the MES permit) */
+    default void restartLine() { }
     void close();
 }

@@ -2,6 +2,7 @@ package kr.co.smartfactory.mes;
 import static org.assertj.core.api.Assertions.*;
 import java.util.Map;
 import kr.co.smartfactory.mes.AuthService.Role;
+import kr.co.smartfactory.mes.AuthService.Need;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

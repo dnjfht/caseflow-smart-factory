@@ -1,0 +1,24 @@
+{
+  "name": "An equipment fault stops the line until it is cleared",
+  "duration": 50,
+  "inputs": [
+    { "at": 0, "tag": "MesPermit", "value": true },
+    { "at": 0.1, "tag": "HmiStart", "value": true },
+    { "at": 0.4, "tag": "HmiStart", "value": false },
+    { "at": 20, "tag": "EquipmentFault", "value": 81 },
+    { "at": 25, "tag": "HmiStart", "value": true },
+    { "at": 25.3, "tag": "HmiStart", "value": false },
+    { "at": 35, "tag": "EquipmentFault", "value": 0 },
+    { "at": 36, "tag": "HmiStart", "value": true },
+    { "at": 36.3, "tag": "HmiStart", "value": false }
+  ],
+  "checks": [
+    { "at": 19, "tag": "M0", "equals": true },
+    { "at": 21, "tag": "M0", "equals": false },
+    { "at": 21, "tag": "AlarmLamp", "equals": true },
+    { "at": 21, "tag": "MachineState", "equals": 5 },
+    { "at": 27, "tag": "M0", "equals": false },
+    { "at": 38, "tag": "M0", "equals": true },
+    { "at": 38, "tag": "AlarmLamp", "equals": false }
+  ]
+}

@@ -11,6 +11,7 @@ VAR_INPUT
   MirrorLaunchLimit : INT := 0; (* 현장 라인이 투입한 세트 수: 이 수만큼만 투입 *)
   MirrorVerdictReady : BOOL := FALSE; (* 현장 라인의 같은 순번 제품 판정이 도착함 *)
   MirrorVerdictGood : BOOL := FALSE; (* 그 판정: TRUE 양품, FALSE 불량 *)
+  EquipmentFault : INT := 0; (* MES 설비 관리: 설비 고장·정비 중이면 고장 코드(81~90), 확인 후 0 *)
   AiMode : BOOL := FALSE; (* MES 비전 AI가 판정: 검사 셀의 자체 판정 대신 AI 판정을 기다려 쓴다 *)
   AiVerdictSeq : INT := 0; (* AI 판정이 해당하는 제품 순번 (InspectedCount + 1과 같을 때만 사용) *)
   AiVerdictGood : BOOL := FALSE; (* AI 판정: TRUE 양품, FALSE 불량 *)
@@ -125,6 +126,9 @@ IF NOT DemoStarted THEN
   LidStockDisplay := 20;
   DemoStarted := TRUE;
 END_IF;
+(* 설비 고장(MES 설비 관리): 잠금·수리 중에는 고장 코드를 유지해 라인을 세우고, 확인되면 해제한다 *)
+IF EquipmentFault <> 0 THEN FaultCode := EquipmentFault;
+ELSIF FaultCode >= 80 THEN FaultCode := 0; END_IF;
 (* 운전 자기유지: MES 허가 + 현장 시작 버튼 → 운전. 정지 버튼, 허가 해제, 고장, 목표 달성 → 해제 *)
 IF StopPB OR HmiStop OR NOT MesPermit OR (FaultCode <> 0) OR (WorkOrderActive <> 1) OR (ShippedCount >= TargetQuantity) THEN
   RunLatch := FALSE;

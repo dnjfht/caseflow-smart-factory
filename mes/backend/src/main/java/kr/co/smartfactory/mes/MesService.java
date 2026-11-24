@@ -20,6 +20,8 @@ public class MesService {
     private final LotService lots;
     private final TransactionTemplate transactions;
     private volatile PlcSnapshot latest = PlcSnapshot.offline("아직 측정하지 않음");
+    /** the last reading of the line (the equipment model wears with what the line actually launches) */
+    public PlcSnapshot latest() { return latest; }
 
     public MesService(JdbcTemplate db, PlcGateway plc, LotService lots, TransactionTemplate transactions) {
         this.db = db;
@@ -306,6 +308,13 @@ public class MesService {
         List<Map<String,Object>> rows = db.queryForList("SELECT * FROM mes_order WHERE id=?", id);
         if (rows.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "작업지시를 찾지 못했습니다.");
         return rows.getFirst();
+    }
+
+    /** an equipment or maintenance event, filed under the work order that was running (none: not filed) */
+    public void equipmentEvent(String type, long ref) {
+        List<Long> o = db.queryForList("SELECT id FROM mes_order WHERE status IN ('RUNNING','PAUSED') ORDER BY id DESC LIMIT 1", Long.class);
+        if (o.isEmpty()) return;
+        try { event(o.get(0), type, (int) ref); } catch (org.springframework.dao.DataAccessException ignored) { }
     }
 
     private void event(long id, String type, int counter) {
