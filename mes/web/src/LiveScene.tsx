@@ -3,6 +3,7 @@ import type { Data } from './App'
 import { s } from './App'
 import { TwinSlot } from './TwinHost'
 import { can, needText, useSession } from './auth'
+import { modeKo, STATUS_KO, useEquipment } from './equipment'
 import { isStaticSite, pressLine, twin, useTwinLink, useTwinTags } from './twin'
 
 import './LiveScene.css'
@@ -23,7 +24,10 @@ export default function LiveScene({ data }: { data: Data; onUpdate: () => Promis
   // with no order in progress the panel keeps showing the last one, finished, rather than the line's leftover counters
   const shown = active ?? data.orders.find(order => s(order, 'STATUS') !== 'CREATED')
   const permit = tags.MesPermit === true
-  const operator = can('OPERATOR', useSession())
+  const operator = can('PRODUCTION', useSession())
+  const eq = useEquipment()
+  const fault = eq?.openFault ?? null
+  const faultAsset = fault ? eq!.assets.find(a => a.code === fault.asset_code)?.name ?? fault.asset_code : ''
   const running = tags.M0 === true
   const state = Number(tags.MachineState ?? 0)
   const num = (k: string) => Number(tags[k] ?? 0)
@@ -46,6 +50,7 @@ export default function LiveScene({ data }: { data: Data; onUpdate: () => Promis
   }
   return <section className="card live-scene">
     <div className="op-title"><div><small>LIVE FACTORY · WEB TWIN</small><h2>3D 현장 · 현장 조작반</h2></div><span>{!ready ? '가상 공정 불러오는 중' : link.mode === 'driver' ? 'MES 서버 연결 · 실적 DB 기록 중' : link.mode === 'viewer' ? '관전 모드' : link.mode === 'static' ? '공개 시연' : 'MES 서버 연결 중'}</span></div>
+    {fault && <p className={`eq-scene-banner s-${fault.status.toLowerCase()}`} role="alert"><b>● 설비 {fault.kind === 'BREAKDOWN' ? '고장' : '예방 정비'}으로 라인 정지</b><span>{faultAsset} · {fault.kind === 'BREAKDOWN' ? modeKo(fault.mode_code) : '예방 정비'} · 고장 코드 {fault.fault_code} · {STATUS_KO[fault.status]}. 설비 관리자가 수리를 확인하면 자동으로 다시 시작합니다.</span><a href="#maintenance">설비 관리 →</a></p>}
     <div className="live-scene-layout">
       <TwinSlot view="overview" />
       <div className="field-panel">
@@ -57,8 +62,8 @@ export default function LiveScene({ data }: { data: Data; onUpdate: () => Promis
         </div>
         <p className="field-state">{ready ? STATE[state] ?? `상태 ${state}` : '현장 제어기 연결 대기'}</p>
         <div className="field-buttons">
-          <button className="pb start" disabled={!operator || !ready || running || !permit} title={!operator ? needText('OPERATOR') : permit ? '' : 'MES 가동 허가가 있어야 시작할 수 있습니다'} onClick={() => press('HmiStart')}>시작</button>
-          <button className="pb stop" disabled={!operator || !ready || !running} title={operator ? '' : needText('OPERATOR')} onClick={() => press('HmiStop')}>정지</button>
+          <button className="pb start" disabled={!operator || !ready || running || !permit} title={!operator ? needText('PRODUCTION') : permit ? '' : 'MES 가동 허가가 있어야 시작할 수 있습니다'} onClick={() => press('HmiStart')}>시작</button>
+          <button className="pb stop" disabled={!operator || !ready || !running} title={operator ? '' : needText('PRODUCTION')} onClick={() => press('HmiStop')}>정지</button>
         </div>
         <dl className="field-counts">
           <div><dt>목표</dt><dd>{counts.target}</dd></div>

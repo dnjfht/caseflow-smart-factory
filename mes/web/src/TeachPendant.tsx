@@ -23,7 +23,7 @@ export default function TeachPendant() {
   const running = tags.M0 === true || ((viewer || link.field) && link.serverTags.M0 === true)
   const [joints, setJoints] = useState<number[] | null>(null)
   const [inc, setInc] = useState(5)
-  const manager = can('SUPERVISOR', useSession())
+  const manager = can('MANAGEMENT', useSession())
   const [prog, setProg] = useState<Program | null>(null)
   const original = useRef<Program | null>(null)
   const [sel, setSel] = useState(0)
@@ -147,7 +147,7 @@ export default function TeachPendant() {
       </li>)}</ol>
       <div className="add-steps"><span>단계 추가</span>{[MOVE, VACUUM, WAIT, SET_OUT].map(op => <button key={op} disabled={locked} onClick={() => addStep(op)}>+ {OP_LABEL[op]}</button>)}</div>
       <div className="pendant-actions">
-        <button className="primary" disabled={locked || !dirty || !manager} title={manager ? '' : needText('SUPERVISOR')} onClick={apply}>공정에 적용</button>
+        <button className="primary" disabled={locked || !dirty || !manager} title={manager ? '' : needText('MANAGEMENT')} onClick={apply}>공정에 적용</button>
         <button disabled={locked || dirty} onClick={testRun} title={dirty ? '먼저 공정에 적용하세요' : ''}>작업 1회 시험 실행</button>
         <button disabled={locked} onClick={restore}>원래 프로그램 불러오기</button>
         {dirty && <em>적용하지 않은 변경이 있습니다</em>}

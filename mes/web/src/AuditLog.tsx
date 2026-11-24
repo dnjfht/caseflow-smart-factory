@@ -15,7 +15,7 @@ const ko = (a: string) => ACTION_KO.find(([re]) => re.test(a))?.[1] ?? a
 /** who did what, when, and whether the MES allowed it */
 export default function AuditLog() {
   const session = useSession()
-  const allowed = can('SUPERVISOR', session)
+  const allowed = can('MANAGEMENT', session)
   const [rows, setRows] = useState<Row[]>([])
   useEffect(() => {
     if (!allowed) return

@@ -1,25 +1,28 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { login, logout, ROLE_KO, useSession, type Role } from './auth'
+import { login, logout, NEED_ROLES, ROLE_KO, ROLES, useSession, type Need, type Role } from './auth'
 
 // what each role may do: the same rules the server enforces (AuthInterceptor)
-export const PERMISSIONS: [string, Role | null][] = [
-  ['모든 화면 조회', null],
-  ['현장 조작반 시작 · 정지', 'OPERATOR'],
-  ['생산 계획 작성', 'OPERATOR'],
-  ['자재 입고 등록', 'OPERATOR'],
-  ['생산 계획 승인 (작성자 본인 제외)', 'SUPERVISOR'],
-  ['작업지시 발행 · MES 가동 허가 · 일시정지 · 종료', 'SUPERVISOR'],
-  ['로봇 프로그램 저장', 'SUPERVISOR'],
-  ['사용자 작업 기록 조회', 'SUPERVISOR'],
-  ['계정 목록 관리', 'ADMIN'],
+export const PERMISSIONS: [string, Need | null][] = [
+  ['모든 화면 조회 (설비 관리 포함)', null],
+  ['현장 조작반 시작 · 정지', 'PRODUCTION'],
+  ['생산 계획 작성', 'PRODUCTION'],
+  ['자재 입고 등록', 'PRODUCTION'],
+  ['생산 계획 승인 (작성자 본인 제외)', 'MANAGEMENT'],
+  ['작업지시 발행 · MES 가동 허가 · 일시정지 · 종료', 'MANAGEMENT'],
+  ['로봇 프로그램 저장', 'MANAGEMENT'],
+  ['사용자 작업 기록 조회', 'MANAGEMENT'],
+  ['설비 고장 수리 시작 · 수리 확인(재가동)', 'MAINTENANCE'],
+  ['예방 정비 · 예지보전 모델 재학습', 'MAINTENANCE'],
+  ['계정 목록 관리 · 시연 마모 배율', 'ADMIN'],
 ]
 const DEMO: { username: string; password: string; role: Role; name: string }[] = [
   { username: 'operator1', password: 'operator1234', role: 'OPERATOR', name: '김현장' },
   { username: 'supervisor1', password: 'supervisor1234', role: 'SUPERVISOR', name: '이반장' },
+  { username: 'maint1', password: 'maint1234', role: 'MAINTENANCE', name: '박정비' },
   { username: 'admin', password: 'admin1234', role: 'ADMIN', name: '시스템관리자' },
 ]
-const RANK: Record<Role, number> = { OPERATOR: 1, SUPERVISOR: 2, ADMIN: 3 }
+const SHORT: Record<Role, string> = { OPERATOR: '작업자', SUPERVISOR: '생산 관리자', MAINTENANCE: '설비 관리자', ADMIN: '시스템' }
 
 export default function AccountMenu() {
   const session = useSession()
@@ -50,9 +53,9 @@ export default function AccountMenu() {
               {DEMO.map((d) => <button type="button" key={d.username} disabled={busy} onClick={() => void submit(d.username, d.password)}>
                 <span className={`role-badge r-${d.role.toLowerCase()}`}>{ROLE_KO[d.role]}</span>{d.name} · {d.username}</button>)}</div>
           </form>}
-          <table className="perm-table"><thead><tr><th>할 수 있는 일</th><th>작업자</th><th>관리자</th><th>시스템</th></tr></thead>
-            <tbody>{PERMISSIONS.map(([what, need]) => <tr key={what}><td>{what}</td>{(['OPERATOR', 'SUPERVISOR', 'ADMIN'] as Role[]).map((r) => <td key={r} className={!need || RANK[r] >= RANK[need] ? 'yes' : 'no'}>{!need || RANK[r] >= RANK[need] ? '●' : '—'}</td>)}</tr>)}</tbody></table>
-          <p className="fine">로그인하지 않으면 모든 화면을 볼 수만 있습니다. 실행한 작업은 누가 언제 했는지 '이벤트 이력'의 사용자 작업 기록에 남습니다. 현장 PC 에이전트와 웹 트윈의 신호 동기화는 설비 간 통신이라 로그인 대상이 아닙니다.</p>
+          <table className="perm-table"><thead><tr><th>할 수 있는 일</th>{ROLES.map((r) => <th key={r}>{SHORT[r]}</th>)}</tr></thead>
+            <tbody>{PERMISSIONS.map(([what, need]) => <tr key={what}><td>{what}</td>{ROLES.map((r) => { const ok = !need || NEED_ROLES[need].includes(r); return <td key={r} className={ok ? 'yes' : 'no'}>{ok ? '●' : '—'}</td> })}</tr>)}</tbody></table>
+          <p className="fine">로그인하지 않으면 모든 화면을 볼 수만 있습니다. 생산과 설비 정비는 권한이 나뉘어 있어, 설비 관리자는 생산을 조작하지 않고 생산 관리자는 수리 확인을 하지 않습니다. 실행한 작업은 누가 언제 했는지 '이벤트 이력'의 사용자 작업 기록에 남습니다. 현장 PC 에이전트와 웹 트윈의 신호 동기화는 설비 간 통신이라 로그인 대상이 아닙니다.</p>
         </div>
       </div>
     </div>, document.body)}

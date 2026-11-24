@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react'
 import { CAUSE_KO } from './AiInspection'
 
-type Bucket = { start: string; label: string; good: number; bad: number; inspected: number; byCause: Record<string, number> }
+export type Bucket = { start: string; label: string; good: number; bad: number; inspected: number; byCause: Record<string, number> }
 type Period = 'day' | 'week' | 'month' | 'year'
-type Mode = 'count' | 'pct'
+export type Mode = 'count' | 'pct'
 const PERIODS: [Period, string][] = [['day', '일'], ['week', '주'], ['month', '월'], ['year', '년']]
-const CAUSES: [string, string][] = [['LID_MISSING', '#d8755d'], ['LID_MISALIGNED', '#e3a75a'], ['SCRATCH', '#5180af'], ['CRACK', '#7b6bb5'], ['CONTAMINATION', '#4f9e8f'], ['DENT', '#b5657f'], ['UNSURE', '#9aa5b1']]
-const GOOD = '#5180af', BAD = '#d8755d'
-type Part = { key: string; name: string; value: number; color: string }
+export const CAUSES: [string, string][] = [['LID_MISSING', '#d8755d'], ['LID_MISALIGNED', '#e3a75a'], ['SCRATCH', '#5180af'], ['CRACK', '#7b6bb5'], ['CONTAMINATION', '#4f9e8f'], ['DENT', '#b5657f'], ['UNSURE', '#9aa5b1']]
+export const GOOD = '#5180af', BAD = '#d8755d'
+export type Part = { key: string; name: string; value: number; color: string }
 
 /** stacked bars over time; in 'pct' mode each bar is 100% of its total */
-function Stack({ rows, mode, top, unit }: { rows: { label: string; parts: Part[] }[]; mode: Mode; top: (r: { parts: Part[] }) => string; unit: string }) {
-  const W = 620, left = 40, right = 8, T = 24, H = 160
+export function Stack({ rows, mode, top, unit, width = 620 }: { rows: { label: string; parts: Part[] }[]; mode: Mode; top: (r: { parts: Part[] }) => string; unit: string; width?: number }) {
+  const W = width, left = 40, right = 8, T = 24, H = 160
   const totals = rows.map((r) => r.parts.reduce((a, p) => a + p.value, 0))
   const max = mode === 'pct' ? 1 : Math.max(1, ...totals)
   // four equal integer steps that clear the tallest bar (1, 2, 5 × 10ⁿ per step)
@@ -34,9 +34,8 @@ function Stack({ rows, mode, top, unit }: { rows: { label: string; parts: Part[]
   </svg>
 }
 
-export default function QualityTrend() {
-  const [period, setPeriod] = useState<Period>('day')
-  const [mode, setMode] = useState<Mode>('count')
+/** the period buckets from /api/quality/trend, refreshed every 15 s (the quality page and the home summary share it) */
+export function useTrend(period: Period) {
   const [buckets, setBuckets] = useState<Bucket[] | null>(null)
   useEffect(() => {
     let gone = false
@@ -45,12 +44,22 @@ export default function QualityTrend() {
     const t = window.setInterval(load, 15000)
     return () => { gone = true; window.clearInterval(t) }
   }, [period])
+  return buckets
+}
+export const rate = (g: number, b: number) => (g + b ? `${(b / (g + b) * 100).toFixed(1)}%` : '—')
+/** the two charts of a period, as drawn on the quality page */
+export const goodBadRows = (list: Bucket[]) => list.map((b) => ({ label: b.label, parts: [{ key: 'good', name: '양품', value: b.good, color: GOOD }, { key: 'bad', name: '불량', value: b.bad, color: BAD }] }))
+export const causeRows = (list: Bucket[]) => list.map((b) => ({ label: b.label, parts: CAUSES.map(([c, col]) => ({ key: c, name: CAUSE_KO[c], value: b.byCause[c] ?? 0, color: col })) }))
+
+export default function QualityTrend() {
+  const [period, setPeriod] = useState<Period>('day')
+  const [mode, setMode] = useState<Mode>('count')
+  const buckets = useTrend(period)
   const list = buckets ?? []
   const good = list.reduce((a, b) => a + b.good, 0), bad = list.reduce((a, b) => a + b.bad, 0)
   const causeTotal = list.reduce((a, b) => a + Object.values(b.byCause).reduce((x, y) => x + y, 0), 0)
   const causeSum = Object.fromEntries(CAUSES.map(([c]) => [c, list.reduce((a, b) => a + (b.byCause[c] ?? 0), 0)]))
   const span = PERIODS.find(([p]) => p === period)![1]
-  const rate = (g: number, b: number) => (g + b ? `${(b / (g + b) * 100).toFixed(1)}%` : '—')
   return <section className="card qc-trend">
     <div className="op-title"><div><small>QUALITY TREND</small><h2>기간별 품질 추이</h2></div>
       <span>최근 {list.length}{span === '일' ? '일' : span === '주' ? '주' : span === '월' ? '개월' : '년'} · LOT 시작일·검사일 기준</span></div>
@@ -62,12 +71,12 @@ export default function QualityTrend() {
       <div className="qc-trend-panel">
         <div className="qc-trend-head"><b>양품 · 불량</b><span>양품 {good}개 · 불량 {bad}개 · 불량률 {rate(good, bad)}</span></div>
         <div className="qc-legend"><span><i style={{ background: GOOD }}/>양품</span><span><i style={{ background: BAD }}/>불량</span><span className="qc-note">막대 위: 불량률</span></div>
-        {buckets ? <Stack unit="개" mode={mode} rows={list.map((b) => ({ label: b.label, parts: [{ key: 'good', name: '양품', value: b.good, color: GOOD }, { key: 'bad', name: '불량', value: b.bad, color: BAD }] }))} top={(r) => rate(r.parts[0].value, r.parts[1].value)}/> : <p className="mes-muted">불러오는 중</p>}
+        {buckets ? <Stack unit="개" mode={mode} rows={goodBadRows(list)} top={(r) => rate(r.parts[0].value, r.parts[1].value)}/> : <p className="mes-muted">불러오는 중</p>}
       </div>
       <div className="qc-trend-panel">
         <div className="qc-trend-head"><b>불량 원인</b><span>AI 판정 불량 {causeTotal}건{causeTotal ? ` · 최다 ${CAUSE_KO[Object.entries(causeSum).sort((a, b) => b[1] - a[1])[0][0]]}` : ''}</span></div>
         <div className="qc-legend">{CAUSES.map(([c, col]) => <span key={c}><i style={{ background: col }}/>{CAUSE_KO[c]}{causeTotal ? ` ${Math.round(causeSum[c] / causeTotal * 100)}%` : ''}</span>)}<span className="qc-note">막대 위: 불량 건수</span></div>
-        {buckets ? <Stack unit="건" mode={mode} rows={list.map((b) => ({ label: b.label, parts: CAUSES.map(([c, col]) => ({ key: c, name: CAUSE_KO[c], value: b.byCause[c] ?? 0, color: col })) }))} top={(r) => String(r.parts.reduce((a, p) => a + p.value, 0))}/> : <p className="mes-muted">불러오는 중</p>}
+        {buckets ? <Stack unit="건" mode={mode} rows={causeRows(list)} top={(r) => String(r.parts.reduce((a, p) => a + p.value, 0))}/> : <p className="mes-muted">불러오는 중</p>}
       </div>
     </div>
     <p className="fine">양품·불량은 작업(LOT)이 시작된 날에, 불량 원인은 각 제품이 AI 검사를 받은 날에 셉니다. 막대에 마우스를 올리면 수량과 비율이 함께 보입니다. 불량 원인은 AI 판정을 도입한 뒤의 작업부터 집계됩니다.</p>
